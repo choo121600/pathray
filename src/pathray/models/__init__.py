@@ -2,6 +2,7 @@
 
 from pathray.models.erd import Entity, EntityField, Relationship
 from pathray.models.page_data import (
+    FormData,
     FormField,
     MetaData,
     PageData,
@@ -13,6 +14,7 @@ from pathray.models.sitemap import SitemapEntry
 __all__ = [
     "Entity",
     "EntityField",
+    "FormData",
     "FormField",
     "MetaData",
     "PageData",
