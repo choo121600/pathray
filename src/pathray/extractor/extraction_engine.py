@@ -55,25 +55,25 @@ class ExtractionEngine:
         """Run extraction on all URLs in the sitemap.
 
         Returns list of PageData for successfully extracted pages.
+        Individual page failures are logged and skipped.
         """
         entries = self._load_entries()
         self._output_dir.mkdir(parents=True, exist_ok=True)
 
         semaphore = asyncio.Semaphore(self._concurrency)
         results: list[PageData | None] = [None] * len(entries)
+        error_count = 0
         lock = asyncio.Lock()
         start_time = time.monotonic()
 
         async with launch_browser() as browser:
-            outcomes = await asyncio.gather(
-                *[
-                    self._process_entry(
-                        browser, entry, idx, len(entries), semaphore, results, lock,
-                    )
-                    for idx, entry in enumerate(entries)
-                ],
-                return_exceptions=True,
-            )
+            tasks = [
+                self._process_entry(
+                    browser, entry, idx, len(entries), semaphore, results, lock,
+                )
+                for idx, entry in enumerate(entries)
+            ]
+            outcomes = await asyncio.gather(*tasks, return_exceptions=True)
 
         error_count = sum(1 for o in outcomes if isinstance(o, BaseException))
         elapsed = time.monotonic() - start_time
@@ -118,6 +118,5 @@ class ExtractionEngine:
                     await page.close()
             except Exception as exc:
                 error = str(exc)
-                raise
             finally:
                 self._progress.on_page_done(url, idx + 1, total, error)
