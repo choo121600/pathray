@@ -1,8 +1,11 @@
 """Entity inference from page data."""
 
 import json
+import logging
 import re
 from pathlib import Path
+
+logger = logging.getLogger(__name__)
 
 from pathray.models.erd import Entity, EntityField
 from pathray.models.page_data import FormField, PageData, TableData
@@ -69,7 +72,7 @@ def _infer_entity_name_from_url(url: str) -> str | None:
             words = re.split(r"[-_]", seg_clean)
             return "".join(w.capitalize() for w in words if w)
     except Exception:
-        pass
+        logger.debug("Failed to infer entity name from URL: %s", url)
     return None
 
 

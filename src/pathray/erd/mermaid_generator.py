@@ -33,8 +33,8 @@ def generate_mermaid(
             markers = ""
             if field.is_primary:
                 markers += " PK"
-            elif not field.nullable:
-                markers += ""
+            if field.name.endswith("_id") and not field.is_primary:
+                markers += " FK"
             line = f"        {field.field_type} {field.name}{markers}"
             lines.append(line)
         lines.append("    }")

@@ -34,17 +34,11 @@ def _field_ddl(field: EntityField) -> str:
     return " ".join(parts)
 
 
-def _fk_constraint(rel: Relationship, from_table: str) -> str:
-    ref_col = f"{rel.to_entity.lower()}_id"
+def _fk_constraint(fk_col: str, referenced_entity: str) -> str:
     return (
-        f'    FOREIGN KEY ("{ref_col}") '
-        f'REFERENCES "{rel.to_entity}" ("id")'
+        f'    FOREIGN KEY ("{fk_col}") '
+        f'REFERENCES "{referenced_entity}" ("id")'
     )
-
-
-def _has_fk_col(entity: Entity, to_entity: str) -> bool:
-    ref_col = f"{to_entity.lower()}_id"
-    return any(f.name == ref_col for f in entity.fields)
 
 
 def generate_ddl(entities: list[Entity], relationships: list[Relationship]) -> str:
@@ -65,11 +59,37 @@ def generate_ddl(entities: list[Entity], relationships: list[Relationship]) -> s
         col_lines = [_field_ddl(f) for f in entity.fields]
 
         fk_lines: list[str] = []
+        entity_field_names = {f.name for f in entity.fields}
         for rel in relationships:
-            if rel.from_entity == entity.name and rel.to_entity in entity_names:
-                if rel.relation_type in ("one-to-many", "many-to-one", "one-to-one"):
-                    if _has_fk_col(entity, rel.to_entity):
-                        fk_lines.append(_fk_constraint(rel, entity.name))
+            if rel.relation_type == "many-to-many":
+                continue
+            # Determine FK column and referenced entity.
+            # The entity holding the FK column could be either side
+            # depending on how the Relationship was constructed.
+            if rel.from_entity == entity.name and rel.to_entity == entity.name:
+                # Self-referential
+                fk_col = rel.label if rel.label else f"{entity.name.lower()}_id"
+                referenced = entity.name
+            elif rel.to_entity == entity.name and rel.from_entity != entity.name:
+                # Inferrer convention: from=referenced, to=FK holder
+                fk_col = (
+                    rel.label if rel.label
+                    else f"{rel.from_entity.lower()}_id"
+                )
+                referenced = rel.from_entity
+            elif rel.from_entity == entity.name and rel.to_entity != entity.name:
+                # Alternate convention: from=FK holder, to=referenced
+                fk_col = (
+                    rel.label if rel.label
+                    else f"{rel.to_entity.lower()}_id"
+                )
+                referenced = rel.to_entity
+            else:
+                continue
+            if fk_col not in entity_field_names:
+                continue
+            if referenced in entity_names:
+                fk_lines.append(_fk_constraint(fk_col, referenced))
 
         all_lines = col_lines + fk_lines
         body = ",\n".join(all_lines)
