@@ -211,7 +211,60 @@ def erd(
     ),
 ) -> None:
     """Generate ERD from extracted page data."""
+    import json as _json
+    from pathlib import Path as _Path
+
+    from rich.console import Console
+
+    from pathray.erd.entity_inferrer import infer_entities, load_pages_from_dir
+    from pathray.erd.relationship_inferrer import infer_relationships
+
+    console = Console()
+
+    pages_path = _Path(pages_dir)
+    if not pages_path.exists():
+        rprint(f"[red]Error:[/red] Directory not found: {pages_dir}")
+        raise typer.Exit(code=1)
+
     rprint(f"[bold]Generating ERD[/bold] from {pages_dir}")
+
+    pages = load_pages_from_dir(pages_path)
+    if not pages:
+        rprint(f"[yellow]Warning:[/yellow] No page-*.json files found in {pages_dir}")
+
+    entities = infer_entities(pages)
+    relationships = infer_relationships(entities)
+
+    console.print(
+        f"  Entities: [bold]{len(entities)}[/bold]  "
+        f"Relationships: [bold]{len(relationships)}[/bold]"
+    )
+
+    out_path = _Path(output)
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+
+    if fmt == "json":
+        data = {
+            "entities": [e.model_dump() for e in entities],
+            "relationships": [r.model_dump() for r in relationships],
+        }
+        out_path.write_text(_json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
+        rprint(f"[bold]ERD written to[/bold] {out_path}")
+
+    elif fmt == "mermaid":
+        from pathray.erd.mermaid_generator import save_mermaid
+
+        mmd_path = out_path.with_suffix(".mmd") if out_path.suffix != ".mmd" else out_path
+        save_mermaid(entities, relationships, mmd_path)
+        rprint(f"[bold]Mermaid ERD written to[/bold] {mmd_path}")
+
+    elif fmt == "dot":
+        rprint("[yellow]DOT format is not yet implemented.[/yellow]")
+        raise typer.Exit(code=1)
+
+    else:
+        rprint(f"[red]Error:[/red] Unknown format: {fmt!r}. Use json, mermaid, or dot.")
+        raise typer.Exit(code=1)
 
 
 @app.command()
@@ -225,6 +278,104 @@ def run(
         "-o",
         help="Output directory.",
     ),
+    fmt: str = typer.Option(
+        "json",
+        "--format",
+        "-f",
+        help="ERD output format (json, mermaid, dot).",
+    ),
 ) -> None:
     """Run the full pipeline: crawl -> extract -> erd."""
-    rprint(f"[bold]Running full pipeline[/bold] for {url}")
+    url = _validate_url(url)
+    asyncio.run(_run_async(url, output, fmt))
+
+
+async def _run_async(url: str, output: str, fmt: str) -> None:
+    import json as _json
+    from pathlib import Path as _Path
+
+    from rich.console import Console
+
+    console = Console()
+    out = _Path(output)
+
+    sitemap_path = str(out / "sitemap.json")
+    pages_dir = str(out / "data")
+    erd_ext = ".mmd" if fmt == "mermaid" else ".json"
+    erd_path = str(out / f"erd{erd_ext}")
+
+    # ── Step 1: Crawl ────────────────────────────────────────────────────────
+    console.rule("[bold]Step 1/3: Crawl[/bold]")
+    try:
+        from pathray.crawler.browser import launch_browser
+        from pathray.crawler.crawler_engine import CrawlerEngine
+        from pathray.crawler.progress import RichCrawlProgress
+        from pathray.crawler.sitemap_writer import write_sitemap
+
+        progress = RichCrawlProgress(silent=False)
+        engine = CrawlerEngine(url, progress=progress)
+        async with launch_browser() as browser:
+            entries = await engine.crawl(browser)
+        write_sitemap(entries, sitemap_path)
+        console.print(f"[green]✓[/green] Sitemap saved to {sitemap_path}")
+    except Exception as exc:
+        console.print(f"[red]✗ Crawl failed:[/red] {exc}")
+        raise typer.Exit(code=1)
+
+    # ── Step 2: Extract ──────────────────────────────────────────────────────
+    console.rule("[bold]Step 2/3: Extract[/bold]")
+    try:
+        from pathray.extractor.extraction_engine import ExtractionEngine, ExtractionProgress
+
+        class _Silent(ExtractionProgress):
+            pass
+
+        engine2 = ExtractionEngine(sitemap_path, pages_dir, progress=_Silent())
+        pages = await engine2.run()
+        console.print(f"[green]✓[/green] Extracted {len(pages)} pages to {pages_dir}")
+    except Exception as exc:
+        console.print(f"[red]✗ Extract failed:[/red] {exc}")
+        raise typer.Exit(code=1)
+
+    # ── Step 3: ERD ──────────────────────────────────────────────────────────
+    console.rule("[bold]Step 3/3: ERD[/bold]")
+    try:
+        from pathray.erd.entity_inferrer import infer_entities, load_pages_from_dir
+        from pathray.erd.relationship_inferrer import infer_relationships
+
+        page_data = load_pages_from_dir(pages_dir)
+        entities = infer_entities(page_data)
+        relationships = infer_relationships(entities)
+
+        console.print(
+            f"  Entities: [bold]{len(entities)}[/bold]  "
+            f"Relationships: [bold]{len(relationships)}[/bold]"
+        )
+
+        out_path = _Path(erd_path)
+        out_path.parent.mkdir(parents=True, exist_ok=True)
+
+        if fmt == "json":
+            data = {
+                "entities": [e.model_dump() for e in entities],
+                "relationships": [r.model_dump() for r in relationships],
+            }
+            out_path.write_text(
+                _json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8"
+            )
+        elif fmt == "mermaid":
+            from pathray.erd.mermaid_generator import save_mermaid
+
+            save_mermaid(entities, relationships, out_path)
+        elif fmt == "dot":
+            console.print("[yellow]DOT format is not yet implemented.[/yellow]")
+            raise typer.Exit(code=1)
+
+        console.print(f"[green]✓[/green] ERD saved to {erd_path}")
+    except typer.Exit:
+        raise
+    except Exception as exc:
+        console.print(f"[red]✗ ERD generation failed:[/red] {exc}")
+        raise typer.Exit(code=1)
+
+    console.rule("[bold green]Pipeline complete![/bold green]")
