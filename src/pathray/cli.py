@@ -209,6 +209,14 @@ def erd(
         "-f",
         help="Output format (json, mermaid, dot).",
     ),
+    threshold: float = typer.Option(
+        0.6,
+        "--threshold",
+        "-t",
+        help="Jaccard similarity threshold for entity merging.",
+        min=0.0,
+        max=1.0,
+    ),
 ) -> None:
     """Generate ERD from extracted page data."""
     import json as _json
@@ -232,7 +240,7 @@ def erd(
     if not pages:
         rprint(f"[yellow]Warning:[/yellow] No page-*.json files found in {pages_dir}")
 
-    entities = infer_entities(pages)
+    entities = infer_entities(pages, threshold=threshold)
     relationships = infer_relationships(entities)
 
     console.print(
@@ -248,7 +256,9 @@ def erd(
             "entities": [e.model_dump() for e in entities],
             "relationships": [r.model_dump() for r in relationships],
         }
-        out_path.write_text(_json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
+        out_path.write_text(
+            _json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8",
+        )
         rprint(f"[bold]ERD written to[/bold] {out_path}")
 
     elif fmt == "mermaid":
@@ -265,6 +275,32 @@ def erd(
     else:
         rprint(f"[red]Error:[/red] Unknown format: {fmt!r}. Use json, mermaid, or dot.")
         raise typer.Exit(code=1)
+
+    # Always generate DDL alongside ERD
+    from pathray.erd.ddl_generator import ddl_to_file
+
+    sql_path = out_path.parent / "schema.sql"
+    ddl_to_file(entities, relationships, sql_path)
+    rprint(f"[bold]SQL DDL written to[/bold] {sql_path}")
+
+    # Generate Mermaid + images if not already mermaid format
+    from pathray.erd.mermaid_generator import save_mermaid as _save_mermaid
+
+    mmd_for_image = out_path.parent / "erd.mmd"
+    if fmt != "mermaid":
+        _save_mermaid(entities, relationships, mmd_for_image)
+
+    from pathray.erd.image_renderer import render_images
+
+    results = render_images(
+        mmd_for_image if fmt != "mermaid"
+        else (out_path.with_suffix(".mmd") if out_path.suffix != ".mmd" else out_path),
+        out_path.parent,
+    )
+    if results.get("png"):
+        rprint(f"[bold]ERD image written to[/bold] {results['png']}")
+    if results.get("svg"):
+        rprint(f"[bold]ERD SVG written to[/bold] {results['svg']}")
 
 
 @app.command()
@@ -305,7 +341,7 @@ async def _run_async(url: str, output: str, fmt: str) -> None:
     erd_path = str(out / f"erd{erd_ext}")
 
     # ── Step 1: Crawl ────────────────────────────────────────────────────────
-    console.rule("[bold]Step 1/3: Crawl[/bold]")
+    console.rule("[bold]Step 1/4: Crawl[/bold]")
     try:
         from pathray.crawler.browser import launch_browser
         from pathray.crawler.crawler_engine import CrawlerEngine
@@ -323,7 +359,7 @@ async def _run_async(url: str, output: str, fmt: str) -> None:
         raise typer.Exit(code=1)
 
     # ── Step 2: Extract ──────────────────────────────────────────────────────
-    console.rule("[bold]Step 2/3: Extract[/bold]")
+    console.rule("[bold]Step 2/4: Extract[/bold]")
     try:
         from pathray.extractor.extraction_engine import ExtractionEngine, ExtractionProgress
 
@@ -333,12 +369,18 @@ async def _run_async(url: str, output: str, fmt: str) -> None:
         engine2 = ExtractionEngine(sitemap_path, pages_dir, progress=_Silent())
         pages = await engine2.run()
         console.print(f"[green]✓[/green] Extracted {len(pages)} pages to {pages_dir}")
+
+        from pathray.extractor.summary_generator import generate_summary
+
+        summary_path = str(out / "summary.json")
+        generate_summary(pages, summary_path)
+        console.print(f"[green]✓[/green] Summary saved to {summary_path}")
     except Exception as exc:
         console.print(f"[red]✗ Extract failed:[/red] {exc}")
         raise typer.Exit(code=1)
 
     # ── Step 3: ERD ──────────────────────────────────────────────────────────
-    console.rule("[bold]Step 3/3: ERD[/bold]")
+    console.rule("[bold]Step 3/4: ERD[/bold]")
     try:
         from pathray.erd.entity_inferrer import infer_entities, load_pages_from_dir
         from pathray.erd.relationship_inferrer import infer_relationships
@@ -361,7 +403,7 @@ async def _run_async(url: str, output: str, fmt: str) -> None:
                 "relationships": [r.model_dump() for r in relationships],
             }
             out_path.write_text(
-                _json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8"
+                _json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8",
             )
         elif fmt == "mermaid":
             from pathray.erd.mermaid_generator import save_mermaid
@@ -377,5 +419,30 @@ async def _run_async(url: str, output: str, fmt: str) -> None:
     except Exception as exc:
         console.print(f"[red]✗ ERD generation failed:[/red] {exc}")
         raise typer.Exit(code=1)
+
+    # ── Step 4: DDL + Images ─────────────────────────────────────────────────
+    console.rule("[bold]Step 4/4: DDL & Images[/bold]")
+    try:
+        from pathray.erd.ddl_generator import ddl_to_file
+        from pathray.erd.mermaid_generator import save_mermaid as _save_mmd
+
+        sql_path = out / "schema.sql"
+        ddl_to_file(entities, relationships, sql_path)
+        console.print(f"[green]✓[/green] SQL DDL saved to {sql_path}")
+
+        mmd_path = out / "erd.mmd"
+        if fmt != "mermaid":
+            _save_mmd(entities, relationships, mmd_path)
+
+        from pathray.erd.image_renderer import render_images
+
+        img_input = mmd_path if fmt != "mermaid" else _Path(erd_path)
+        results = render_images(img_input, out)
+        if results.get("png"):
+            console.print(f"[green]✓[/green] ERD image saved to {results['png']}")
+        if results.get("svg"):
+            console.print(f"[green]✓[/green] ERD SVG saved to {results['svg']}")
+    except Exception as exc:
+        console.print(f"[yellow]⚠ DDL/Image generation warning:[/yellow] {exc}")
 
     console.rule("[bold green]Pipeline complete![/bold green]")

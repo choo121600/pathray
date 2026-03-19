@@ -131,8 +131,10 @@ def _jaccard(set_a: set[str], set_b: set[str]) -> float:
     return len(set_a & set_b) / union if union else 0.0
 
 
-def _merge_entities(entities: list[Entity]) -> list[Entity]:
-    """Merge entities with Jaccard field-name similarity >= 0.6."""
+def _merge_entities(
+    entities: list[Entity], threshold: float = 0.6,
+) -> list[Entity]:
+    """Merge entities with Jaccard field-name similarity >= threshold."""
     if not entities:
         return []
     merged = list(entities)
@@ -150,7 +152,7 @@ def _merge_entities(entities: list[Entity]) -> list[Entity]:
                     continue
                 names_cur = {f.name for f in current.fields}
                 names_other = {f.name for f in merged[j].fields}
-                if _jaccard(names_cur, names_other) >= 0.6:
+                if _jaccard(names_cur, names_other) >= threshold:
                     existing = {f.name for f in current.fields}
                     extra = [f for f in merged[j].fields if f.name not in existing]
                     current = Entity(
@@ -201,12 +203,19 @@ def infer_entities_from_page(page: PageData) -> list[Entity]:
     return entities
 
 
-def infer_entities(pages: list[PageData]) -> list[Entity]:
-    """Infer and merge entities across multiple pages."""
+def infer_entities(
+    pages: list[PageData], threshold: float = 0.6,
+) -> list[Entity]:
+    """Infer and merge entities across multiple pages.
+
+    Args:
+        pages: List of PageData objects to infer entities from.
+        threshold: Jaccard similarity threshold for merging (default 0.6).
+    """
     all_entities: list[Entity] = []
     for page in pages:
         all_entities.extend(infer_entities_from_page(page))
-    return _merge_entities(all_entities)
+    return _merge_entities(all_entities, threshold=threshold)
 
 
 def load_pages_from_dir(directory: str | Path) -> list[PageData]:
