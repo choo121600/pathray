@@ -1,5 +1,6 @@
 """CLI entry point for pathray."""
 
+import asyncio
 from typing import Optional
 
 import typer
@@ -36,13 +37,46 @@ def main(
 @app.command()
 def crawl(
     url: str = typer.Argument(help="Target URL to crawl."),
-    depth: int = typer.Option(2, "--depth", "-d", help="Maximum crawl depth."),
+    depth: int = typer.Option(5, "--depth", "-d", help="Maximum crawl depth."),
+    concurrency: int = typer.Option(
+        3, "--concurrency", "-c", help="Max concurrent pages.",
+    ),
     output: str = typer.Option(
         "output/sitemap.json", "--output", "-o", help="Output file path.",
     ),
+    silent: bool = typer.Option(
+        False, "--silent", "-s", help="Disable progress output.",
+    ),
 ) -> None:
     """Crawl a website and generate a sitemap."""
-    rprint(f"[bold]Crawling[/bold] {url} (depth={depth})")
+    asyncio.run(_crawl_async(url, depth, concurrency, output, silent))
+
+
+async def _crawl_async(
+    url: str, depth: int, concurrency: int, output: str, silent: bool,
+) -> None:
+    from pathray.crawler.browser import launch_browser
+    from pathray.crawler.crawler_engine import CrawlerEngine
+    from pathray.crawler.progress import RichCrawlProgress
+    from pathray.crawler.sitemap_writer import write_sitemap
+
+    progress = RichCrawlProgress(silent=silent)
+    engine = CrawlerEngine(
+        url, max_depth=depth, concurrency=concurrency, progress=progress,
+    )
+
+    if not silent:
+        rprint(
+            f"[bold]Crawling[/bold] {url} "
+            f"(depth={depth}, concurrency={concurrency})",
+        )
+
+    async with launch_browser() as browser:
+        entries = await engine.crawl(browser)
+
+    path = write_sitemap(entries, output)
+    if not silent:
+        rprint(f"[bold]Sitemap written to[/bold] {path}")
 
 
 @app.command()
@@ -75,5 +109,5 @@ def run(
     url: str = typer.Argument(help="Target URL for full pipeline."),
     output: str = typer.Option("output/", "--output", "-o", help="Output directory."),
 ) -> None:
-    """Run the full pipeline: crawl → extract → erd."""
+    """Run the full pipeline: crawl -> extract -> erd."""
     rprint(f"[bold]Running full pipeline[/bold] for {url}")
