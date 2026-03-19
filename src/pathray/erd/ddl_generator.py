@@ -24,9 +24,14 @@ def _map_type(field_type: str) -> str:
     return _TYPE_MAP.get(field_type.lower(), "TEXT")
 
 
+def _esc(identifier: str) -> str:
+    """Escape double quotes in SQL identifiers."""
+    return identifier.replace('"', '""')
+
+
 def _field_ddl(field: EntityField) -> str:
     col_type = _map_type(field.field_type)
-    parts = [f'    "{field.name}" {col_type}']
+    parts = [f'    "{_esc(field.name)}" {col_type}']
     if field.is_primary:
         parts.append("PRIMARY KEY")
     elif not field.nullable:
@@ -36,8 +41,8 @@ def _field_ddl(field: EntityField) -> str:
 
 def _fk_constraint(fk_col: str, referenced_entity: str) -> str:
     return (
-        f'    FOREIGN KEY ("{fk_col}") '
-        f'REFERENCES "{referenced_entity}" ("id")'
+        f'    FOREIGN KEY ("{_esc(fk_col)}") '
+        f'REFERENCES "{_esc(referenced_entity)}" ("id")'
     )
 
 
@@ -93,7 +98,7 @@ def generate_ddl(entities: list[Entity], relationships: list[Relationship]) -> s
 
         all_lines = col_lines + fk_lines
         body = ",\n".join(all_lines)
-        stmt = f'CREATE TABLE "{entity.name}" (\n{body}\n);'
+        stmt = f'CREATE TABLE "{_esc(entity.name)}" (\n{body}\n);'
         statements.append(stmt)
 
     return "\n\n".join(statements)

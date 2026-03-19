@@ -51,6 +51,7 @@ def render_images(
                 check=True,
                 capture_output=True,
                 text=True,
+                timeout=120,
             )
             results[fmt] = out_path
         except FileNotFoundError:
@@ -58,6 +59,10 @@ def render_images(
                 "npx not found — skipping ERD image rendering (%s). "
                 "Install Node.js to enable image output.",
                 fmt,
+            )
+        except subprocess.TimeoutExpired:
+            logger.warning(
+                "mermaid-cli timed out for %s (120s limit).", fmt,
             )
         except subprocess.CalledProcessError as exc:
             logger.warning(
