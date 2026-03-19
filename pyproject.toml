@@ -1,0 +1,41 @@
+[project]
+name = "pathray"
+version = "0.1.0"
+description = "Web page structure analyzer and ERD generator"
+readme = "README.md"
+authors = [
+    { name = "Yeonguk", email = "choo121600@gmail.com" }
+]
+requires-python = ">=3.12"
+dependencies = [
+    "typer",
+    "rich",
+    "playwright",
+    "pydantic",
+]
+
+[dependency-groups]
+dev = [
+    "pytest",
+    "pytest-asyncio",
+    "pytest-cov",
+    "ruff",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project.scripts]
+pathray = "pathray.cli:app"
+
+[tool.ruff]
+target-version = "py312"
+line-length = 88
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "W"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
