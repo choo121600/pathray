@@ -115,6 +115,7 @@ async def _crawl_async(
 def extract(
     sitemap: str = typer.Argument(
         help="Path to sitemap JSON file.",
+        exists=True,
     ),
     output: str = typer.Option(
         "output/data/",
@@ -123,7 +124,7 @@ def extract(
         help="Output directory for extracted page JSON files.",
     ),
     concurrency: int = typer.Option(
-        3, "--concurrency", "-c", help="Max concurrent pages.",
+        3, "--concurrency", "-c", min=1, help="Max concurrent pages.",
     ),
     silent: bool = typer.Option(
         False, "--silent", "-s", help="Disable progress output.",

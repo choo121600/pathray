@@ -42,6 +42,9 @@ class ExtractionEngine:
         concurrency: int = 3,
         progress: ExtractionProgress | None = None,
     ) -> None:
+        if concurrency < 1:
+            msg = "concurrency must be at least 1"
+            raise ValueError(msg)
         self._sitemap_path = Path(sitemap_path)
         self._output_dir = Path(output_dir)
         self._concurrency = concurrency
@@ -62,13 +65,12 @@ class ExtractionEngine:
 
         semaphore = asyncio.Semaphore(self._concurrency)
         results: list[PageData | None] = [None] * len(entries)
-        lock = asyncio.Lock()
         start_time = time.monotonic()
 
         async with launch_browser() as browser:
             tasks = [
                 self._process_entry(
-                    browser, entry, idx, len(entries), semaphore, results, lock,
+                    browser, entry, idx, len(entries), semaphore, results,
                 )
                 for idx, entry in enumerate(entries)
             ]
@@ -88,7 +90,6 @@ class ExtractionEngine:
         total: int,
         semaphore: asyncio.Semaphore,
         results: list[PageData | None],
-        lock: asyncio.Lock,
     ) -> None:
         url = str(entry.url)
         async with semaphore:
@@ -111,8 +112,7 @@ class ExtractionEngine:
                     )
                     out_path = self._output_dir / f"page-{idx:03d}.json"
                     out_path.write_text(page_data.model_dump_json(indent=2))
-                    async with lock:
-                        results[idx] = page_data
+                    results[idx] = page_data
                 finally:
                     await page.close()
             except Exception as exc:

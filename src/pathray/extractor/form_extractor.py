@@ -41,6 +41,8 @@ async def extract_forms(page: Page) -> list[FormData]:
                 field_type = (await el.get_attribute("type")) or "text"
                 options = []
 
+            placeholder = await el.get_attribute("placeholder")
+
             # Find label via label[for=id]
             label = None
             el_id = await el.get_attribute("id")
@@ -55,6 +57,7 @@ async def extract_forms(page: Page) -> list[FormData]:
                     field_type=field_type,
                     label=label,
                     required=bool(required),
+                    placeholder=placeholder,
                     options=options,
                 )
             )

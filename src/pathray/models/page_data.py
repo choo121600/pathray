@@ -24,6 +24,7 @@ class FormField(BaseModel):
     field_type: str
     label: str | None = None
     required: bool = False
+    placeholder: str | None = None
     options: list[str] = []
 
 
