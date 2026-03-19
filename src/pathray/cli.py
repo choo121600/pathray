@@ -1,6 +1,7 @@
 """CLI entry point for pathray."""
 
 import asyncio
+from pathlib import Path
 from typing import Optional
 from urllib.parse import urlparse
 
@@ -114,16 +115,81 @@ async def _crawl_async(
 def extract(
     sitemap: str = typer.Argument(
         help="Path to sitemap JSON file.",
+        exists=True,
     ),
     output: str = typer.Option(
-        "output/pages/",
+        "output/data/",
         "--output",
         "-o",
-        help="Output directory.",
+        help="Output directory for extracted page JSON files.",
+    ),
+    concurrency: int = typer.Option(
+        3, "--concurrency", "-c", min=1, help="Max concurrent pages.",
+    ),
+    silent: bool = typer.Option(
+        False, "--silent", "-s", help="Disable progress output.",
     ),
 ) -> None:
     """Extract page structure data from crawled pages."""
-    rprint(f"[bold]Extracting[/bold] from {sitemap}")
+    asyncio.run(_extract_async(sitemap, output, concurrency, silent))
+
+
+async def _extract_async(
+    sitemap: str,
+    output: str,
+    concurrency: int,
+    silent: bool,
+) -> None:
+    from rich.console import Console
+
+    from pathray.extractor.extraction_engine import ExtractionEngine, ExtractionProgress
+
+    console = Console()
+
+    class _RichProgress(ExtractionProgress):
+        def on_page_start(self, url: str, index: int, total: int) -> None:
+            if not silent:
+                console.print(f"  [dim]Extracting ({index}/{total}):[/dim] {url}")
+
+        def on_page_done(
+            self, url: str, index: int, total: int, error: str | None,
+        ) -> None:
+            if silent:
+                return
+            if error:
+                console.print(f"  [yellow]Warning:[/yellow] {url} - {error}")
+
+        def on_complete(self, total: int, errors: int, elapsed: float) -> None:
+            if silent:
+                return
+            console.print()
+            console.print("[bold green]Extraction complete![/bold green]")
+            console.print(f"  Total pages: {total}")
+            console.print(f"  Errors: {errors}")
+            console.print(f"  Elapsed: {elapsed:.1f}s")
+
+    if not silent:
+        rprint(f"[bold]Extracting[/bold] from {sitemap} (concurrency={concurrency})")
+
+    engine = ExtractionEngine(
+        sitemap,
+        output,
+        concurrency=concurrency,
+        progress=_RichProgress(),
+    )
+    pages = await engine.run()
+
+    if not silent:
+        rprint(f"[bold]Pages saved to[/bold] {output} ({len(pages)} files)")
+
+    from pathray.extractor.summary_generator import generate_summary, print_summary
+
+    summary_path = str(Path(output).parent / "summary.json")
+    summary = generate_summary(pages, summary_path)
+
+    if not silent:
+        print_summary(summary)
+        rprint(f"[bold]Summary written to[/bold] {summary_path}")
 
 
 @app.command()

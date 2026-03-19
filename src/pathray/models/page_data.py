@@ -24,6 +24,7 @@ class FormField(BaseModel):
     field_type: str
     label: str | None = None
     required: bool = False
+    placeholder: str | None = None
     options: list[str] = []
 
 
@@ -48,6 +49,16 @@ class MetaData(BaseModel):
     description: str | None = None
     keywords: list[str] = []
     og_tags: dict[str, str] = {}
+    canonical_url: str | None = None
+    images: list[str] = []
+
+
+class FormData(BaseModel):
+    """Represents a complete HTML form with its fields."""
+
+    action: str | None = None
+    method: str = "GET"
+    fields: list[FormField] = []
 
 
 class PageData(BaseModel):
@@ -59,5 +70,5 @@ class PageData(BaseModel):
     url: HttpUrl
     meta: MetaData = MetaData()
     tables: list[TableData] = []
-    forms: list[list[FormField]] = []
+    forms: list[FormData] = []
     text_blocks: list[TextContent] = []
