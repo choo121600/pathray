@@ -62,7 +62,6 @@ class ExtractionEngine:
 
         semaphore = asyncio.Semaphore(self._concurrency)
         results: list[PageData | None] = [None] * len(entries)
-        error_count = 0
         lock = asyncio.Lock()
         start_time = time.monotonic()
 
@@ -73,9 +72,9 @@ class ExtractionEngine:
                 )
                 for idx, entry in enumerate(entries)
             ]
-            outcomes = await asyncio.gather(*tasks, return_exceptions=True)
+            await asyncio.gather(*tasks, return_exceptions=True)
 
-        error_count = sum(1 for o in outcomes if isinstance(o, BaseException))
+        error_count = sum(1 for r in results if r is None)
         elapsed = time.monotonic() - start_time
         self._progress.on_complete(len(entries), error_count, elapsed)
 

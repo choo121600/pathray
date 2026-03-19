@@ -273,13 +273,15 @@ async def test_progress_reports_error_on_failure(tmp_path):
     output_dir = tmp_path / "data"
 
     reported_errors: list[str | None] = []
+    complete_info: dict = {}
 
     class ErrorTracker(ExtractionProgress):
         def on_page_done(self, url, index, total, error):
             reported_errors.append(error)
 
         def on_complete(self, total, errors, elapsed):
-            pass
+            complete_info["total"] = total
+            complete_info["errors"] = errors
 
     mock_browser = AsyncMock()
     mock_page = AsyncMock()
@@ -320,3 +322,5 @@ async def test_progress_reports_error_on_failure(tmp_path):
     assert len(pages) == 0
     assert len(reported_errors) == 1
     assert "broken" in reported_errors[0]
+    assert complete_info["total"] == 1
+    assert complete_info["errors"] == 1
