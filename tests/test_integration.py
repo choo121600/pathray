@@ -73,6 +73,7 @@ async def test_crawl_discovers_all_pages(test_server):
 
     engine = CrawlerEngine(
         test_server, max_depth=5, concurrency=2,
+        respect_robots=False,
     )
     async with launch_browser() as browser:
         entries = await engine.crawl(browser)
@@ -89,6 +90,7 @@ async def test_crawl_no_infinite_loop(test_server):
 
     engine = CrawlerEngine(
         test_server, max_depth=10, concurrency=2,
+        respect_robots=False,
     )
     async with launch_browser() as browser:
         entries = await engine.crawl(browser)
@@ -103,6 +105,7 @@ async def test_crawl_excludes_external_links(test_server):
 
     engine = CrawlerEngine(
         test_server, max_depth=5, concurrency=2,
+        respect_robots=False,
     )
     async with launch_browser() as browser:
         entries = await engine.crawl(browser)
@@ -123,6 +126,7 @@ async def test_crawl_generates_valid_sitemap(
 
     engine = CrawlerEngine(
         test_server, max_depth=5, concurrency=2,
+        respect_robots=False,
     )
     async with launch_browser() as browser:
         entries = await engine.crawl(browser)
@@ -148,6 +152,7 @@ async def test_crawl_respects_depth_limit(test_server):
 
     engine = CrawlerEngine(
         test_server, max_depth=1, concurrency=2,
+        respect_robots=False,
     )
     async with launch_browser() as browser:
         entries = await engine.crawl(browser)

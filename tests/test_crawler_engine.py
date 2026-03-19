@@ -37,7 +37,7 @@ async def test_crawl_single_page(monkeypatch):
         "https://example.com": [],
     })
 
-    async def mock_crawl_page(browser, url, timeout=30000):
+    async def mock_crawl_page(browser, url, timeout=30000, **kwargs):
         return page_map.get(url, _fallback(url))
 
     monkeypatch.setattr(
@@ -63,7 +63,7 @@ async def test_crawl_follows_links(monkeypatch):
         "https://example.com/about": [],
     })
 
-    async def mock_crawl_page(browser, url, timeout=30000):
+    async def mock_crawl_page(browser, url, timeout=30000, **kwargs):
         return page_map.get(url, _fallback(url))
 
     monkeypatch.setattr(
@@ -88,7 +88,7 @@ async def test_crawl_respects_max_depth(monkeypatch):
         "https://example.com/c": [],
     })
 
-    async def mock_crawl_page(browser, url, timeout=30000):
+    async def mock_crawl_page(browser, url, timeout=30000, **kwargs):
         return page_map.get(url, _fallback(url))
 
     monkeypatch.setattr(
@@ -115,7 +115,7 @@ async def test_crawl_no_duplicate_visits(monkeypatch):
         "https://example.com/a": ["https://example.com"],
     })
 
-    async def mock_crawl_page(browser, url, timeout=30000):
+    async def mock_crawl_page(browser, url, timeout=30000, **kwargs):
         return page_map.get(url, _fallback(url))
 
     monkeypatch.setattr(
@@ -141,7 +141,7 @@ async def test_crawl_filters_external_links(monkeypatch):
         "https://example.com/internal": [],
     })
 
-    async def mock_crawl_page(browser, url, timeout=30000):
+    async def mock_crawl_page(browser, url, timeout=30000, **kwargs):
         return page_map.get(url, _fallback(url))
 
     monkeypatch.setattr(

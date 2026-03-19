@@ -56,7 +56,9 @@ async def test_crawl_page_extracts_links():
     browser = _make_mock_browser(
         hrefs=["https://example.com/about", "/contact"],
     )
-    result = await crawl_page(browser, "https://example.com")
+    result = await crawl_page(
+        browser, "https://example.com", respect_robots=False,
+    )
     assert result.status_code == 200
     assert "https://example.com/about" in result.links
     assert "https://example.com/contact" in result.links
@@ -65,7 +67,9 @@ async def test_crawl_page_extracts_links():
 @pytest.mark.asyncio
 async def test_crawl_page_extracts_title():
     browser = _make_mock_browser(title="My Site")
-    result = await crawl_page(browser, "https://example.com")
+    result = await crawl_page(
+        browser, "https://example.com", respect_robots=False,
+    )
     assert result.title == "My Site"
 
 
@@ -74,6 +78,7 @@ async def test_crawl_page_status_code():
     browser = _make_mock_browser(status=404)
     result = await crawl_page(
         browser, "https://example.com/missing",
+        respect_robots=False,
     )
     assert result.status_code == 404
     assert result.error is None
@@ -84,6 +89,7 @@ async def test_crawl_page_timeout():
     browser = _make_mock_browser(raise_timeout=True)
     result = await crawl_page(
         browser, "https://example.com/slow",
+        respect_robots=False,
     )
     assert result.status_code == 0
     assert result.error == "Timeout"
@@ -97,6 +103,7 @@ async def test_crawl_page_network_error():
     )
     result = await crawl_page(
         browser, "https://example.com/broken",
+        respect_robots=False,
     )
     assert result.status_code == 0
     assert "Network down" in result.error
@@ -111,6 +118,36 @@ async def test_crawl_page_filters_non_http():
             "https://example.com/ok",
         ],
     )
-    result = await crawl_page(browser, "https://example.com")
+    result = await crawl_page(
+        browser, "https://example.com", respect_robots=False,
+    )
     assert len(result.links) == 1
     assert result.links[0] == "https://example.com/ok"
+
+
+@pytest.mark.asyncio
+async def test_crawl_page_robots_blocked(monkeypatch):
+    """Page blocked by robots.txt returns error."""
+    monkeypatch.setattr(
+        "pathray.crawler.page_crawler._check_robots",
+        lambda url: False,
+    )
+    browser = _make_mock_browser()
+    result = await crawl_page(
+        browser, "https://example.com/secret",
+        respect_robots=True,
+    )
+    assert result.status_code == 0
+    assert result.error == "Blocked by robots.txt"
+    assert result.links == []
+
+
+@pytest.mark.asyncio
+async def test_crawl_page_robots_disabled():
+    """With respect_robots=False, robots.txt is not checked."""
+    browser = _make_mock_browser()
+    result = await crawl_page(
+        browser, "https://example.com",
+        respect_robots=False,
+    )
+    assert result.status_code == 200

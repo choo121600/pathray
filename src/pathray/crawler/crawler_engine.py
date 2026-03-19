@@ -1,6 +1,7 @@
 """Main crawling orchestrator with concurrency control."""
 
 import asyncio
+import time
 from datetime import datetime, timezone
 
 from playwright.async_api import Browser
@@ -35,12 +36,15 @@ class CrawlerEngine:
         max_depth: int = 5,
         concurrency: int = 3,
         progress: CrawlProgress | None = None,
+        respect_robots: bool = True,
     ) -> None:
         self._base_url = base_url
         self._max_depth = max_depth
         self._concurrency = concurrency
         self._progress = progress or CrawlProgress()
+        self._respect_robots = respect_robots
         self._results: list[SitemapEntry] = []
+        self._lock = asyncio.Lock()
 
     async def crawl(self, browser: Browser) -> list[SitemapEntry]:
         """Run BFS crawl starting from base_url.
@@ -52,7 +56,7 @@ class CrawlerEngine:
 
         semaphore = asyncio.Semaphore(self._concurrency)
         self._results = []
-        start_time = asyncio.get_event_loop().time()
+        start_time = time.monotonic()
 
         active_tasks: set[asyncio.Task[None]] = set()
 
@@ -60,19 +64,22 @@ class CrawlerEngine:
             while not queue.is_empty():
                 url, depth = queue.dequeue()
                 task = asyncio.create_task(
-                    self._process_url(browser, url, depth, queue, semaphore),
+                    self._process_url(
+                        browser, url, depth, queue, semaphore,
+                    ),
                 )
                 active_tasks.add(task)
                 task.add_done_callback(active_tasks.discard)
 
             if active_tasks:
                 done, _ = await asyncio.wait(
-                    active_tasks, return_when=asyncio.FIRST_COMPLETED,
+                    active_tasks,
+                    return_when=asyncio.FIRST_COMPLETED,
                 )
                 for t in done:
-                    t.result()  # propagate exceptions
+                    t.result()
 
-        elapsed = asyncio.get_event_loop().time() - start_time
+        elapsed = time.monotonic() - start_time
         error_count = sum(
             1 for e in self._results if e.status_code == 0
         )
@@ -92,8 +99,12 @@ class CrawlerEngine:
     ) -> None:
         async with semaphore:
             self._progress.on_page_start(url)
-            result = await crawl_page(browser, url)
-            self._progress.on_page_done(url, result.status_code, result.error)
+            result = await crawl_page(
+                browser, url, respect_robots=self._respect_robots,
+            )
+            self._progress.on_page_done(
+                url, result.status_code, result.error,
+            )
 
             entry = SitemapEntry(
                 url=result.url,
@@ -103,7 +114,8 @@ class CrawlerEngine:
                 links=[link for link in result.links],
                 timestamp=datetime.now(timezone.utc),
             )
-            self._results.append(entry)
+            async with self._lock:
+                self._results.append(entry)
 
             if depth < self._max_depth:
                 for link in result.links:
