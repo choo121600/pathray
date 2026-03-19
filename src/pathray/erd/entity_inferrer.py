@@ -71,7 +71,7 @@ def _infer_entity_name_from_url(url: str) -> str | None:
                 continue
             words = re.split(r"[-_]", seg_clean)
             return "".join(w.capitalize() for w in words if w)
-    except Exception:
+    except (ValueError, IndexError, AttributeError):
         logger.debug("Failed to infer entity name from URL: %s", url)
     return None
 

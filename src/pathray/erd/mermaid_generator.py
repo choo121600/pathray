@@ -8,7 +8,7 @@ _CARDINALITY_MAP = {
     "one-to-many": ("||", "o{"),
     "many-to-one": ("}o", "||"),
     "one-to-one": ("||", "||"),
-    "many-to-many": ("}|", "|{"),
+    "many-to-many": ("}o", "o{"),
 }
 
 

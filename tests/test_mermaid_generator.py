@@ -84,7 +84,7 @@ def test_generate_many_to_many_relationship(user_entity, order_entity):
         relation_type="many-to-many",
     )
     result = generate_mermaid([user_entity, order_entity], [rel])
-    assert "User }|--|{ Order" in result
+    assert "User }o--o{ Order" in result
 
 
 def test_generate_many_to_one_relationship(user_entity, order_entity):

@@ -25,7 +25,7 @@ def _find_entity(name: str, entities: list[Entity]) -> str | None:
 def _is_junction_table(entity: Entity, fk_field_names: list[str]) -> bool:
     """Return True when the entity looks like a junction/pivot table.
 
-    Heuristic: has ≥ 2 FK fields and at most 2 non-PK, non-FK fields.
+    Heuristic: has ≥ 2 FK fields and at most 1 non-PK, non-FK field.
     """
     non_fk_fields = [
         f for f in entity.fields
