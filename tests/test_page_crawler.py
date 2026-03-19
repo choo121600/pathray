@@ -128,9 +128,12 @@ async def test_crawl_page_filters_non_http():
 @pytest.mark.asyncio
 async def test_crawl_page_robots_blocked(monkeypatch):
     """Page blocked by robots.txt returns error."""
+    async def mock_check_robots(url):
+        return False
+
     monkeypatch.setattr(
         "pathray.crawler.page_crawler._check_robots",
-        lambda url: False,
+        mock_check_robots,
     )
     browser = _make_mock_browser()
     result = await crawl_page(

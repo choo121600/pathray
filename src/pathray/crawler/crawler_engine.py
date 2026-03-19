@@ -111,7 +111,7 @@ class CrawlerEngine:
                 title=result.title,
                 depth=depth,
                 status_code=result.status_code,
-                links=[link for link in result.links],
+                links=list(result.links),
                 timestamp=datetime.now(timezone.utc),
             )
             async with self._lock:

@@ -1,32 +1,33 @@
 """Playwright-based single page crawler."""
 
+import asyncio
+from collections import OrderedDict
 from dataclasses import dataclass
-from urllib.parse import urljoin
+from urllib.parse import urljoin, urlparse
 from urllib.robotparser import RobotFileParser
 
 from playwright.async_api import Browser
 from playwright.async_api import TimeoutError as PlaywrightTimeout
 
-_robot_cache: dict[str, RobotFileParser] = {}
+_MAX_ROBOT_CACHE = 100
+_robot_cache: OrderedDict[str, RobotFileParser] = OrderedDict()
 
 
-def _check_robots(url: str) -> bool:
+async def _check_robots(url: str) -> bool:
     """Check if url is allowed by robots.txt. Returns True if allowed."""
-    from urllib.parse import urlparse
-
     parsed = urlparse(url)
-    base = f"{parsed.scheme}://{parsed.netloc}"
-    robots_url = f"{base}/robots.txt"
+    robots_url = f"{parsed.scheme}://{parsed.netloc}/robots.txt"
 
     if robots_url not in _robot_cache:
         rp = RobotFileParser()
         rp.set_url(robots_url)
         try:
-            rp.read()
+            await asyncio.to_thread(rp.read)
         except Exception:
-            # If robots.txt is unreachable, allow by default
             rp.allow_all = True
         _robot_cache[robots_url] = rp
+        if len(_robot_cache) > _MAX_ROBOT_CACHE:
+            _robot_cache.popitem(last=False)
 
     return _robot_cache[robots_url].can_fetch("*", url)
 
@@ -60,7 +61,7 @@ async def crawl_page(
     Returns:
         PageResult with extracted data.
     """
-    if respect_robots and not _check_robots(url):
+    if respect_robots and not await _check_robots(url):
         return PageResult(
             url=url,
             title=None,

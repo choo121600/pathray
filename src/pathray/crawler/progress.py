@@ -30,16 +30,20 @@ class RichCrawlProgress(CrawlProgress):
         elapsed = time.monotonic() - self._start_time
         if error:
             self._console.print(
-                f"  [yellow]Warning:[/yellow] {url} - {error}",
+                f"  [yellow]Warning:[/yellow] {url} - {error} "
+                f"({self._completed} pages, {elapsed:.1f}s)",
             )
         elif status_code >= 400:
             self._console.print(
-                f"  [yellow]Warning:[/yellow] {url} - HTTP {status_code}",
+                f"  [yellow]Warning:[/yellow] {url} "
+                f"- HTTP {status_code} "
+                f"({self._completed} pages, {elapsed:.1f}s)",
             )
-        self._console.print(
-            f"  [dim]Done:[/dim] {self._completed} pages, "
-            f"{elapsed:.1f}s elapsed",
-        )
+        else:
+            self._console.print(
+                f"  [dim]Done:[/dim] {self._completed} pages, "
+                f"{elapsed:.1f}s elapsed",
+            )
 
     def on_complete(
         self, total: int, errors: int, elapsed: float,
