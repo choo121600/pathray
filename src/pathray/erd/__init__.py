@@ -1,6 +1,6 @@
 """ERD generation modules."""
 
-from pathray.erd.ddl_generator import ddl_to_file, ddl_to_string, generate_ddl
+from pathray.erd.ddl_generator import ddl_to_file, generate_ddl
 from pathray.erd.entity_inferrer import (
     infer_entities,
     infer_entities_from_page,
@@ -12,7 +12,6 @@ from pathray.erd.relationship_inferrer import infer_relationships
 
 __all__ = [
     "ddl_to_file",
-    "ddl_to_string",
     "generate_ddl",
     "generate_mermaid",
     "infer_entities",
