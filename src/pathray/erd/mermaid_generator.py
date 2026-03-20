@@ -1,8 +1,31 @@
 """Mermaid ERD diagram generator for pathray."""
 
+import re
 from pathlib import Path
 
 from pathray.models.erd import Entity, Relationship
+
+
+def _sanitize_name(name: str) -> tuple[str, str | None]:
+    """Sanitize a name for Mermaid ATTRIBUTE_WORD compatibility.
+
+    Returns (sanitized_name, original_or_none).
+    If the name is already ASCII-safe, original is None.
+    """
+    ascii_name = re.sub(r"[^\x00-\x7F]", "_", name)
+    ascii_name = re.sub(r"_+", "_", ascii_name).strip("_")
+    if not ascii_name or not re.match(r"[A-Za-z_]", ascii_name):
+        ascii_name = "f_" + ascii_name
+    changed = ascii_name != name
+    return ascii_name, (name if changed else None)
+
+
+def _sanitize_entity_name(name: str) -> str:
+    """Sanitize entity name — quote if it contains non-ASCII."""
+    if re.search(r"[^\x00-\x7F]", name):
+        escaped = name.replace('"', '\\"')
+        return f'"{escaped}"'
+    return name
 
 _CARDINALITY_MAP = {
     "one-to-many": ("||", "o{"),
@@ -28,14 +51,17 @@ def generate_mermaid(
     lines: list[str] = ["erDiagram"]
 
     for entity in entities:
-        lines.append(f"    {entity.name} {{")
+        safe_entity = _sanitize_entity_name(entity.name)
+        lines.append(f"    {safe_entity} {{")
         for field in entity.fields:
             markers = ""
             if field.is_primary:
                 markers += " PK"
             if field.name.endswith("_id") and not field.is_primary:
                 markers += " FK"
-            line = f"        {field.field_type} {field.name}{markers}"
+            safe_name, original = _sanitize_name(field.name)
+            comment = f' "{original}"' if original else ""
+            line = f"        {field.field_type} {safe_name}{markers}{comment}"
             lines.append(line)
         lines.append("    }")
 
@@ -44,8 +70,10 @@ def generate_mermaid(
             rel.relation_type, ("||", "o{")
         )
         label = rel.label if rel.label else rel.relation_type
+        safe_from = _sanitize_entity_name(rel.from_entity)
+        safe_to = _sanitize_entity_name(rel.to_entity)
         lines.append(
-            f'    {rel.from_entity} {left}--{right} {rel.to_entity} : "{label}"'
+            f'    {safe_from} {left}--{right} {safe_to} : "{label}"'
         )
 
     return "\n".join(lines) + "\n"
