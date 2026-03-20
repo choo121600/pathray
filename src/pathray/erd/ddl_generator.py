@@ -104,11 +104,6 @@ def generate_ddl(entities: list[Entity], relationships: list[Relationship]) -> s
     return "\n\n".join(statements)
 
 
-def ddl_to_string(entities: list[Entity], relationships: list[Relationship]) -> str:
-    """Return DDL as a string."""
-    return generate_ddl(entities, relationships)
-
-
 def ddl_to_file(
     entities: list[Entity],
     relationships: list[Relationship],

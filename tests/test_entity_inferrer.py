@@ -55,7 +55,7 @@ class TestInferFieldType:
         assert _infer_field_type("birth_date") == "DATE"
 
     def test_created_at(self):
-        assert _infer_field_type("created_at") == "DATE"
+        assert _infer_field_type("created_at") == "TIMESTAMP"
 
     def test_phone_name(self):
         assert _infer_field_type("phone") == "VARCHAR"
@@ -139,7 +139,7 @@ class TestFieldsFromTable:
         fields = _fields_from_table(table)
         types = {f.name: f.field_type for f in fields}
         assert types["email"] == "VARCHAR"
-        assert types["created_at"] == "DATE"
+        assert types["created_at"] == "TIMESTAMP"
         assert types["count"] == "INTEGER"
 
 
