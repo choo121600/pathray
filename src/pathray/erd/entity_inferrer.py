@@ -5,22 +5,30 @@ import logging
 import re
 from pathlib import Path
 
-logger = logging.getLogger(__name__)
-
 from pathray.models.erd import Entity, EntityField
 from pathray.models.page_data import FormField, PageData, TableData
 
-_SKIP_WEB_TERMS = frozenset(
-    {"edit", "new", "create", "show", "index", "list", "view", "add", "update", "delete"}
-)
+logger = logging.getLogger(__name__)
+
+_SKIP_WEB_TERMS = frozenset({
+    "edit", "new", "create", "show", "index",
+    "list", "view", "add", "update", "delete",
+})
 
 _TYPE_PATTERNS: list[tuple[re.Pattern, str]] = [
     (re.compile(r"email", re.IGNORECASE), "VARCHAR"),
-    (re.compile(r"date|time|created_at|updated_at", re.IGNORECASE), "DATE"),
+    (re.compile(
+        r"datetime|timestamp|created_at|updated_at",
+        re.IGNORECASE,
+    ), "TIMESTAMP"),
+    (re.compile(r"date", re.IGNORECASE), "DATE"),
     (re.compile(r"phone|tel", re.IGNORECASE), "VARCHAR"),
     (re.compile(r"url|link|href|website", re.IGNORECASE), "VARCHAR"),
     (re.compile(r"bool|active|enabled|is_", re.IGNORECASE), "BOOLEAN"),
-    (re.compile(r"number|count|qty|quantity|amount|price|age|total|score", re.IGNORECASE), "INTEGER"),
+    (re.compile(
+        r"number|count|qty|quantity|amount|price|age|total|score",
+        re.IGNORECASE,
+    ), "INTEGER"),
 ]
 
 _FORM_TYPE_MAP: dict[str, str] = {
@@ -139,8 +147,11 @@ def _merge_entities(
         return []
     merged = list(entities)
     changed = True
-    while changed:
+    max_iterations = 10
+    iteration = 0
+    while changed and iteration < max_iterations:
         changed = False
+        iteration += 1
         result: list[Entity] = []
         used: set[int] = set()
         for i, base in enumerate(merged):
@@ -174,7 +185,11 @@ def _base_name_from_page(page: PageData) -> str:
         # Strip common suffixes like " | App Name"
         title = re.split(r"\s*[|\-—]\s*", title)[0].strip()
         words = re.split(r"[\s_\-]+", title)
-        name = "".join(w.capitalize() for w in words if w.isalnum() or re.match(r"\w", w))
+        name = "".join(
+            w.capitalize()
+            for w in words
+            if w.isalnum() or re.match(r"\w", w)
+        )
         if name:
             return name
     return _infer_entity_name_from_url(str(page.url)) or "Unknown"

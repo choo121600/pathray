@@ -1,9 +1,14 @@
 """CLI entry point for pathray."""
 
+from __future__ import annotations
+
 import asyncio
 from pathlib import Path
-from typing import Optional
+from typing import TYPE_CHECKING, Optional
 from urllib.parse import urlparse
+
+if TYPE_CHECKING:
+    from pathray.models.erd import Entity, Relationship
 
 import typer
 from rich import print as rprint
@@ -193,9 +198,9 @@ async def _extract_async(
 
 
 def _write_erd_outputs(
-    entities: list,
-    relationships: list,
-    out_path: "Path",
+    entities: list[Entity],
+    relationships: list[Relationship],
+    out_path: Path,
     fmt: str,
 ) -> None:
     """Write ERD, DDL, Mermaid, and image outputs (shared by erd + run)."""
@@ -266,7 +271,7 @@ def erd(
         "json",
         "--format",
         "-f",
-        help="Output format (json, mermaid, dot).",
+        help="Output format (json, mermaid).",
     ),
     threshold: float = typer.Option(
         0.6,
@@ -324,7 +329,7 @@ def run(
         "json",
         "--format",
         "-f",
-        help="ERD output format (json, mermaid, dot).",
+        help="ERD output format (json, mermaid).",
     ),
 ) -> None:
     """Run the full pipeline: crawl -> extract -> erd."""
@@ -366,7 +371,10 @@ async def _run_async(url: str, output: str, fmt: str) -> None:
     # ── Step 2: Extract ──────────────────────────────────────────────────────
     console.rule("[bold]Step 2/3: Extract[/bold]")
     try:
-        from pathray.extractor.extraction_engine import ExtractionEngine, ExtractionProgress
+        from pathray.extractor.extraction_engine import (
+            ExtractionEngine,
+            ExtractionProgress,
+        )
 
         class _Silent(ExtractionProgress):
             pass

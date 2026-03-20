@@ -85,6 +85,7 @@ def infer_relationships(entities: list[Entity]) -> list[Relationship]:
         referenced_entities = list(dict.fromkeys(fk_map.values()))
 
         # N:M junction table heuristic
+        # TODO: support 3+ way junction tables
         if _is_junction_table(entity, fk_field_names) and len(referenced_entities) >= 2:
             relationships.append(
                 Relationship(

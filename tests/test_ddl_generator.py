@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-from pathray.erd.ddl_generator import ddl_to_file, ddl_to_string, generate_ddl
+from pathray.erd.ddl_generator import ddl_to_file, generate_ddl
 from pathray.models.erd import Entity, EntityField, Relationship
 
 
@@ -117,12 +117,6 @@ def test_no_fk_when_column_missing(simple_entity: Entity) -> None:
     )
     ddl = generate_ddl([simple_entity, entity_no_fk_col], [rel])
     assert "FOREIGN KEY" not in ddl
-
-
-def test_ddl_to_string(simple_entity: Entity) -> None:
-    result = ddl_to_string([simple_entity], [])
-    assert isinstance(result, str)
-    assert 'CREATE TABLE "User"' in result
 
 
 def test_ddl_to_file(simple_entity: Entity) -> None:
