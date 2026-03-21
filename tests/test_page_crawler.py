@@ -7,22 +7,16 @@ import pytest
 from pathray.crawler.page_crawler import crawl_page
 
 
-def _make_mock_element(href: str) -> AsyncMock:
-    el = AsyncMock()
-    el.get_attribute = AsyncMock(return_value=href)
-    return el
-
-
 def _make_mock_browser(
     *,
     status: int = 200,
     title: str = "Test Page",
-    hrefs: list[str] | None = None,
+    evaluate_return: list[str] | None = None,
     raise_timeout: bool = False,
     raise_error: Exception | None = None,
 ) -> AsyncMock:
-    if hrefs is None:
-        hrefs = []
+    if evaluate_return is None:
+        evaluate_return = []
 
     browser = AsyncMock()
     page = AsyncMock()
@@ -44,8 +38,7 @@ def _make_mock_browser(
         page.goto = AsyncMock(return_value=response)
 
     page.title = AsyncMock(return_value=title)
-    elements = [_make_mock_element(h) for h in hrefs]
-    page.query_selector_all = AsyncMock(return_value=elements)
+    page.evaluate = AsyncMock(return_value=evaluate_return)
     page.close = AsyncMock()
 
     return browser
@@ -54,7 +47,7 @@ def _make_mock_browser(
 @pytest.mark.asyncio
 async def test_crawl_page_extracts_links():
     browser = _make_mock_browser(
-        hrefs=["https://example.com/about", "/contact"],
+        evaluate_return=["https://example.com/about", "/contact"],
     )
     result = await crawl_page(
         browser, "https://example.com", respect_robots=False,
@@ -112,7 +105,7 @@ async def test_crawl_page_network_error():
 @pytest.mark.asyncio
 async def test_crawl_page_filters_non_http():
     browser = _make_mock_browser(
-        hrefs=[
+        evaluate_return=[
             "mailto:test@example.com",
             "javascript:void(0)",
             "https://example.com/ok",
@@ -154,3 +147,36 @@ async def test_crawl_page_robots_disabled():
         respect_robots=False,
     )
     assert result.status_code == 200
+
+
+@pytest.mark.asyncio
+async def test_crawl_page_deduplicates_links():
+    """Duplicate URLs from evaluate should be deduplicated."""
+    browser = _make_mock_browser(
+        evaluate_return=[
+            "https://example.com/page",
+            "https://example.com/page",
+            "/page",
+        ],
+    )
+    result = await crawl_page(
+        browser, "https://example.com", respect_robots=False,
+    )
+    assert result.links.count("https://example.com/page") == 1
+
+
+@pytest.mark.asyncio
+async def test_crawl_page_resolves_relative_urls():
+    """Relative URLs from iframe/onclick are resolved to absolute."""
+    browser = _make_mock_browser(
+        evaluate_return=[
+            "subdir/page.aspx",
+            "../other.html",
+        ],
+    )
+    result = await crawl_page(
+        browser, "https://example.com/app/index.html",
+        respect_robots=False,
+    )
+    assert "https://example.com/app/subdir/page.aspx" in result.links
+    assert "https://example.com/other.html" in result.links

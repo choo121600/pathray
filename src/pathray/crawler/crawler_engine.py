@@ -117,6 +117,6 @@ class CrawlerEngine:
             async with self._lock:
                 self._results.append(entry)
 
-            if depth < self._max_depth:
+            if self._max_depth == 0 or depth < self._max_depth:
                 for link in result.links:
                     queue.enqueue(link, depth + 1)

@@ -278,6 +278,36 @@ def _write_erd_outputs(
 
 
 @app.command()
+def tree(
+    sitemap: str = typer.Argument(
+        help="Path to sitemap JSON file.",
+    ),
+    output: str = typer.Option(
+        "output/sitemap-tree.mmd",
+        "--output",
+        "-o",
+        help="Output .mmd file path.",
+    ),
+) -> None:
+    """Generate a Mermaid site tree diagram from a crawled sitemap."""
+    from pathlib import Path as _Path
+
+    from pathray.crawler.sitemap_tree import load_and_generate
+
+    sitemap_p = _Path(sitemap)
+    if not sitemap_p.exists():
+        rprint(f"[red]Error:[/red] File not found: {sitemap}")
+        raise typer.Exit(code=1)
+
+    results = load_and_generate(sitemap, output)
+    rprint(f"[bold]Sitemap tree written to[/bold] {results['mmd']}")
+    if results.get("png"):
+        rprint(f"[bold]Sitemap tree image:[/bold] {results['png']}")
+    if results.get("svg"):
+        rprint(f"[bold]Sitemap tree SVG:[/bold] {results['svg']}")
+
+
+@app.command()
 def erd(
     pages_dir: str = typer.Argument(
         help="Path to extracted pages directory.",
@@ -352,6 +382,19 @@ def run(
         "-o",
         help="Output directory.",
     ),
+    depth: int = typer.Option(
+        0,
+        "--depth",
+        "-d",
+        help="Maximum crawl depth (0 = unlimited).",
+    ),
+    concurrency: int = typer.Option(
+        3,
+        "--concurrency",
+        "-c",
+        min=1,
+        help="Max concurrent pages.",
+    ),
     fmt: str = typer.Option(
         "json",
         "--format",
@@ -363,10 +406,18 @@ def run(
 ) -> None:
     """Run the full pipeline: crawl -> extract -> erd."""
     url = _validate_url(url)
-    asyncio.run(_run_async(url, output, fmt, ai, dump_html))
+    asyncio.run(_run_async(url, output, fmt, ai, dump_html, depth, concurrency))
 
 
-async def _run_async(url: str, output: str, fmt: str, ai: bool = False, dump_html: bool = False) -> None:
+async def _run_async(
+    url: str,
+    output: str,
+    fmt: str,
+    ai: bool = False,
+    dump_html: bool = False,
+    depth: int = 0,
+    concurrency: int = 3,
+) -> None:
     from pathlib import Path as _Path
 
     from rich.console import Console
@@ -387,12 +438,30 @@ async def _run_async(url: str, output: str, fmt: str, ai: bool = False, dump_htm
         from pathray.crawler.progress import RichCrawlProgress
         from pathray.crawler.sitemap_writer import write_sitemap
 
+        depth_label = "unlimited" if depth == 0 else str(depth)
+        console.print(
+            f"  [dim]depth={depth_label}, concurrency={concurrency}[/dim]",
+        )
         progress = RichCrawlProgress(silent=False)
-        engine = CrawlerEngine(url, progress=progress)
+        engine = CrawlerEngine(
+            url,
+            max_depth=depth,
+            concurrency=concurrency,
+            progress=progress,
+        )
         async with launch_browser() as browser:
             entries = await engine.crawl(browser)
         write_sitemap(entries, sitemap_path)
         console.print(f"[green]✓[/green] Sitemap saved to {sitemap_path}")
+
+        from pathray.crawler.sitemap_tree import save_sitemap_tree
+
+        tree_results = save_sitemap_tree(entries, out / "sitemap-tree.mmd")
+        console.print(f"[green]✓[/green] Sitemap tree saved to {tree_results['mmd']}")
+        if tree_results.get("png"):
+            console.print(f"[green]✓[/green] Sitemap tree image: {tree_results['png']}")
+        if tree_results.get("svg"):
+            console.print(f"[green]✓[/green] Sitemap tree SVG: {tree_results['svg']}")
     except Exception as exc:
         console.print(f"[red]✗ Crawl failed:[/red] {exc}")
         raise typer.Exit(code=1)

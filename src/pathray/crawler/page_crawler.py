@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from urllib.parse import urljoin, urlparse
 from urllib.robotparser import RobotFileParser
 
-from playwright.async_api import Browser
+from playwright.async_api import Browser, Page
 from playwright.async_api import TimeoutError as PlaywrightTimeout
 
 _MAX_ROBOT_CACHE = 100
@@ -41,6 +41,91 @@ class PageResult:
     status_code: int
     links: list[str]
     error: str | None = None
+
+
+_EXTRACT_JS = """() => {
+    const urls = new Set();
+
+    // 1. Standard <a href>
+    for (const a of document.querySelectorAll('a[href]')) {
+        const href = a.getAttribute('href');
+        if (href) urls.add(href);
+    }
+
+    // 2. iframe/frame src
+    for (const el of document.querySelectorAll('iframe[src], frame[src]')) {
+        const src = el.getAttribute('src');
+        if (src) urls.add(src);
+    }
+
+    // 3. onclick handlers — extract URL-like strings
+    for (const el of document.querySelectorAll('[onclick]')) {
+        const onclick = el.getAttribute('onclick');
+        if (!onclick) continue;
+        const matches = onclick.matchAll(/['"]([^'"]*\\.(?:aspx|html|htm|php|jsp|do|action|cgi)[^'"]*)['"]/gi);
+        for (const m of matches) urls.add(m[1]);
+        const locMatch = onclick.match(/(?:window\\.)?location(?:\\.href)?\\s*=\\s*['"]([^'"]+)['"]/);
+        if (locMatch) urls.add(locMatch[1]);
+        const openMatch = onclick.match(/window\\.open\\(\\s*['"]([^'"]+)['"]/);
+        if (openMatch) urls.add(openMatch[1]);
+    }
+
+    // 4. javascript: href — extract embedded URLs
+    for (const a of document.querySelectorAll('a[href^="javascript:"]')) {
+        const href = a.getAttribute('href');
+        if (!href) continue;
+        const matches = href.matchAll(/['"]([^'"]*\\.(?:aspx|html|htm|php|jsp|do|action|cgi)[^'"]*)['"]/gi);
+        for (const m of matches) urls.add(m[1]);
+    }
+
+    // 5. data-href, data-url, data-src attributes
+    for (const el of document.querySelectorAll('[data-href], [data-url], [data-src]')) {
+        for (const attr of ['data-href', 'data-url', 'data-src']) {
+            const val = el.getAttribute(attr);
+            if (val && val.trim()) urls.add(val.trim());
+        }
+    }
+
+    // 6. meta refresh
+    const meta = document.querySelector('meta[http-equiv="refresh"]');
+    if (meta) {
+        const content = meta.getAttribute('content') || '';
+        const urlMatch = content.match(/url=([^;\\s]+)/i);
+        if (urlMatch) urls.add(urlMatch[1]);
+    }
+
+    return [...urls];
+}"""
+
+
+async def _extract_links(page: Page, base_url: str) -> list[str]:
+    """Extract links from the main page and all child frames.
+
+    Sources: a[href], iframe/frame[src], onclick handlers, javascript: hrefs,
+    data-href/data-url/data-src attributes, meta refresh.
+    """
+    # Run extraction on main frame
+    raw_urls: list[str] = await page.evaluate(_EXTRACT_JS)
+
+    # Also extract from all child frames (e.g. iframe content)
+    for frame in page.frames:
+        if frame == page.main_frame:
+            continue
+        try:
+            frame_urls: list[str] = await frame.evaluate(_EXTRACT_JS)
+            raw_urls.extend(frame_urls)
+        except Exception:
+            continue
+
+    links: list[str] = []
+    seen: set[str] = set()
+    for raw in raw_urls:
+        absolute = urljoin(base_url, raw)
+        if absolute.startswith(("http://", "https://")) and absolute not in seen:
+            seen.add(absolute)
+            links.append(absolute)
+
+    return links
 
 
 async def crawl_page(
@@ -78,19 +163,7 @@ async def crawl_page(
         status_code = response.status if response else 0
 
         title = await page.title()
-
-        elements = await page.query_selector_all("a[href]")
-        raw_hrefs = []
-        for el in elements:
-            href = await el.get_attribute("href")
-            if href:
-                raw_hrefs.append(href)
-
-        links = []
-        for href in raw_hrefs:
-            absolute = urljoin(url, href)
-            if absolute.startswith(("http://", "https://")):
-                links.append(absolute)
+        links = await _extract_links(page, url)
 
         return PageResult(
             url=url,

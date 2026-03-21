@@ -80,6 +80,9 @@ pathray extract output/sitemap.json
 
 # 3. ERD 생성
 pathray erd output/data/
+
+# 4. 사이트맵 트리 시각화 (선택)
+pathray tree output/sitemap.json
 ```
 
 ## CLI 레퍼런스
@@ -139,6 +142,19 @@ pathray erd [OPTIONS] PAGES_DIR
 | `--threshold` | `-t` | FLOAT | `0.6` | 엔티티 병합 Jaccard 유사도 임계값 (0.0~1.0) |
 | `--ai` | | | `false` | AI(Claude CLI)를 사용한 엔티티 추론 |
 
+### `pathray tree`
+
+크롤링된 사이트맵을 Mermaid 트리 다이어그램과 이미지로 시각화합니다.
+
+```
+pathray tree [OPTIONS] SITEMAP
+```
+
+| 옵션 | 단축 | 타입 | 기본값 | 설명 |
+|------|------|------|--------|------|
+| `SITEMAP` | | TEXT | (필수) | 사이트맵 JSON 파일 경로 |
+| `--output` | `-o` | TEXT | `output/sitemap-tree.mmd` | 출력 파일 경로 |
+
 ### `pathray run`
 
 전체 파이프라인을 한 번에 실행합니다: crawl → extract → erd
@@ -151,6 +167,8 @@ pathray run [OPTIONS] URL
 |------|------|------|--------|------|
 | `URL` | | TEXT | (필수) | 대상 URL |
 | `--output` | `-o` | TEXT | `output/` | 출력 디렉토리 |
+| `--depth` | `-d` | INTEGER | `0` | 최대 크롤링 깊이 (0 = 무제한) |
+| `--concurrency` | `-c` | INTEGER | `3` | 최대 동시 크롤링 페이지 수 |
 | `--format` | `-f` | TEXT | `json` | ERD 출력 형식 (`json`, `mermaid`) |
 | `--ai` | | | `false` | AI(Claude CLI)를 사용한 엔티티 추론 |
 | `--dump-html` | | | `false` | 각 페이지의 원본 HTML을 저장 |
@@ -160,6 +178,9 @@ pathray run [OPTIONS] URL
 ```
 output/
 ├── sitemap.json          # 크롤링된 사이트맵 (URL, 제목, 깊이, 상태코드)
+├── sitemap-tree.mmd      # 사이트 구조 Mermaid 트리 다이어그램
+├── sitemap-tree.png      # 사이트 구조 트리 이미지 (Node.js 필요)
+├── sitemap-tree.svg      # 사이트 구조 트리 SVG (Node.js 필요)
 ├── data/
 │   ├── page-000.json     # 페이지별 추출 데이터 (테이블, 폼, 텍스트, 메타)
 │   ├── page-001.json
