@@ -76,8 +76,10 @@ def test_erd_json_format():
         assert result.exit_code == 0, result.output
         assert out_file.exists()
         data = json.loads(out_file.read_text())
-        assert "entities" in data
+        assert "pages" in data
         assert "relationships" in data
+        assert len(data["pages"]) > 0
+        assert "entities" in data["pages"][0]
 
 
 def test_erd_mermaid_format():
@@ -117,7 +119,7 @@ def test_erd_empty_directory():
         assert result.exit_code == 0, result.output
         # Empty but valid output
         data = json.loads(out_file.read_text())
-        assert data["entities"] == []
+        assert data["pages"] == []
 
 
 def test_erd_dot_format_not_implemented():

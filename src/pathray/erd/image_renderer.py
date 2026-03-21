@@ -38,16 +38,19 @@ def render_images(
 
     for fmt, out_path in (("png", png_path), ("svg", svg_path)):
         try:
+            cmd = [
+                "npx",
+                "--yes",
+                "@mermaid-js/mermaid-cli",
+                "-i",
+                str(mmd_path),
+                "-o",
+                str(out_path),
+            ]
+            if fmt == "png":
+                cmd += ["--scale", "4", "--width", "4096"]
             subprocess.run(
-                [
-                    "npx",
-                    "--yes",
-                    "@mermaid-js/mermaid-cli",
-                    "-i",
-                    str(mmd_path),
-                    "-o",
-                    str(out_path),
-                ],
+                cmd,
                 check=True,
                 capture_output=True,
                 text=True,

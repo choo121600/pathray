@@ -41,6 +41,7 @@ class ExtractionEngine:
         *,
         concurrency: int = 3,
         progress: ExtractionProgress | None = None,
+        dump_html: bool = False,
     ) -> None:
         if concurrency < 1:
             msg = "concurrency must be at least 1"
@@ -49,6 +50,7 @@ class ExtractionEngine:
         self._output_dir = Path(output_dir)
         self._concurrency = concurrency
         self._progress = progress or ExtractionProgress()
+        self._dump_html = dump_html
 
     def _load_entries(self) -> list[SitemapEntry]:
         data = json.loads(self._sitemap_path.read_text())
@@ -113,6 +115,13 @@ class ExtractionEngine:
                     out_path = self._output_dir / f"page-{idx:03d}.json"
                     out_path.write_text(page_data.model_dump_json(indent=2))
                     results[idx] = page_data
+
+                    if self._dump_html:
+                        html_dir = self._output_dir / "html"
+                        html_dir.mkdir(parents=True, exist_ok=True)
+                        html_content = await page.content()
+                        html_path = html_dir / f"page-{idx:03d}.html"
+                        html_path.write_text(html_content, encoding="utf-8")
                 finally:
                     await page.close()
             except Exception as exc:

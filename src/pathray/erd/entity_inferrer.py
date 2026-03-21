@@ -49,6 +49,9 @@ _FORM_TYPE_MAP: dict[str, str] = {
 
 _SKIP_FORM_TYPES = frozenset({"submit", "button", "reset", "image", "hidden", "file"})
 
+_MAX_FIELD_NAME_LEN = 64
+_MAX_FIELDS_PER_ENTITY = 30
+
 
 def _infer_field_type(name: str, form_field_type: str | None = None) -> str:
     """Infer SQL field type from field name and optional HTML form input type."""
@@ -84,9 +87,79 @@ def _infer_entity_name_from_url(url: str) -> str | None:
     return None
 
 
+def _is_data_value(name: str) -> bool:
+    """Return True if the name looks like a data value rather than a column header."""
+    if name.isdigit():
+        return True
+    if len(name) > _MAX_FIELD_NAME_LEN:
+        return True
+    # Names with many underscores are likely sentences converted to snake_case, not field names
+    if name.count("_") > 5:
+        return True
+    return False
+
+
+def _is_data_table(table: TableData) -> bool:
+    """Return True if the table looks like a data table worth inferring entities from."""
+    if not table.headers:
+        return False
+    non_empty = [h for h in table.headers if h.strip()]
+    if not non_empty:
+        return False
+    avg_len = sum(len(h) for h in non_empty) / len(non_empty)
+    if avg_len > 50:
+        return False
+    return True
+
+
+def _text_to_pascal(text: str) -> str:
+    """Convert arbitrary text to PascalCase, taking up to the first 3 meaningful words."""
+    # Strip common suffix separators
+    text = re.split(r"\s*[|\-—]\s*", text)[0].strip()
+    words = re.split(r"[\s_\-/]+", text)
+    # Take up to 3 short words (skip words > 20 chars as they are likely sentences)
+    selected = [w for w in words if w and len(w) <= 20][:3]
+    return "".join(w.capitalize() for w in selected if re.match(r"\w", w))
+
+
+def _table_entity_name(
+    table: TableData,
+    base: str,
+    index: int,
+    used_names: set[str],
+) -> str:
+    """Derive a PascalCase entity name for a table.
+
+    Priority: caption > context_heading > fallback ({base}Table{n}).
+    """
+    candidate: str | None = None
+
+    if table.caption:
+        candidate = _text_to_pascal(table.caption)
+    elif table.context_heading:
+        candidate = _text_to_pascal(table.context_heading)
+
+    # If candidate is too short or generic, use fallback
+    _GENERIC_WORDS = frozenset({"List", "Table", "Data", "Info", "Report", "Page"})
+    if not candidate or candidate in _GENERIC_WORDS:
+        candidate = f"{base}Table{index + 1}"
+    elif len(candidate) <= 3:
+        candidate = f"{base}{candidate}"
+
+    # Ensure uniqueness
+    name = candidate
+    suffix = 2
+    while name in used_names:
+        name = f"{candidate}{suffix}"
+        suffix += 1
+
+    return name
+
+
 def _fields_from_table(table: TableData) -> list[EntityField]:
     """Infer EntityFields from a TableData (headers → field names)."""
     fields: list[EntityField] = []
+    seen: set[str] = set()
     for i, header in enumerate(table.headers):
         header = header.strip()
         if not header:
@@ -95,6 +168,11 @@ def _fields_from_table(table: TableData) -> list[EntityField]:
         name = re.sub(r"[^\w]", "", name)
         if not name:
             continue
+        if _is_data_value(name):
+            continue
+        if name in seen:
+            continue
+        seen.add(name)
         is_primary = name in ("id", "pk", "key")
         field_type = _infer_field_type(name)
         fields.append(
@@ -105,6 +183,8 @@ def _fields_from_table(table: TableData) -> list[EntityField]:
                 is_primary=is_primary,
             )
         )
+        if len(fields) >= _MAX_FIELDS_PER_ENTITY:
+            break
     return fields
 
 
@@ -200,20 +280,33 @@ def infer_entities_from_page(page: PageData) -> list[Entity]:
     url_str = str(page.url)
     base = _base_name_from_page(page)
     entities: list[Entity] = []
+    used_names: set[str] = set()
 
     for i, table in enumerate(page.tables):
+        if not _is_data_table(table):
+            continue
         fields = _fields_from_table(table)
         if not fields:
             continue
-        name = base if len(page.tables) == 1 else f"{base}Table{i + 1}"
-        entities.append(Entity(name=name, fields=fields, source_url=url_str))
+        if len(page.tables) == 1:
+            name = base
+        else:
+            name = _table_entity_name(table, base, i, used_names)
+        used_names.add(name)
+        entities.append(Entity(
+            name=name, fields=fields, source_url=url_str,
+            source_title=page.meta.title,
+        ))
 
     for i, form in enumerate(page.forms):
         fields = _fields_from_form(form.fields)
         if not fields:
             continue
         name = base if len(page.forms) == 1 else f"{base}Form{i + 1}"
-        entities.append(Entity(name=name, fields=fields, source_url=url_str))
+        entities.append(Entity(
+            name=name, fields=fields, source_url=url_str,
+            source_title=page.meta.title,
+        ))
 
     return entities
 

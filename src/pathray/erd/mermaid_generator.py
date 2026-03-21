@@ -1,6 +1,7 @@
 """Mermaid ERD diagram generator for pathray."""
 
 import re
+from collections import defaultdict
 from pathlib import Path
 
 from pathray.models.erd import Entity, Relationship
@@ -50,20 +51,31 @@ def generate_mermaid(
     """
     lines: list[str] = ["erDiagram"]
 
+    # Group entities by source page
+    groups: defaultdict[str, list[Entity]] = defaultdict(list)
     for entity in entities:
-        safe_entity = _sanitize_entity_name(entity.name)
-        lines.append(f"    {safe_entity} {{")
-        for field in entity.fields:
-            markers = ""
-            if field.is_primary:
-                markers += " PK"
-            if field.name.endswith("_id") and not field.is_primary:
-                markers += " FK"
-            safe_name, original = _sanitize_name(field.name)
-            comment = f' "{original}"' if original else ""
-            line = f"        {field.field_type} {safe_name}{markers}{comment}"
-            lines.append(line)
-        lines.append("    }")
+        key = entity.source_title or entity.source_url or ""
+        groups[key].append(entity)
+
+    for group_label, group_entities in groups.items():
+        if group_label:
+            url = group_entities[0].source_url or ""
+            lines.append(f"    %% ── {group_label} ({url}) ──")
+
+        for entity in group_entities:
+            safe_entity = _sanitize_entity_name(entity.name)
+            lines.append(f"    {safe_entity} {{")
+            for field in entity.fields:
+                markers = ""
+                if field.is_primary:
+                    markers += " PK"
+                if field.name.endswith("_id") and not field.is_primary:
+                    markers += " FK"
+                safe_name, original = _sanitize_name(field.name)
+                comment = f' "{original}"' if original else ""
+                line = f"        {field.field_type} {safe_name}{markers}{comment}"
+                lines.append(line)
+            lines.append("    }")
 
     for rel in relationships:
         left, right = _CARDINALITY_MAP.get(

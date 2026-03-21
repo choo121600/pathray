@@ -1,5 +1,6 @@
 """SQL DDL generator for ERD entities and relationships."""
 
+from collections import defaultdict
 from pathlib import Path
 
 from pathray.models.erd import Entity, EntityField, Relationship
@@ -60,46 +61,63 @@ def generate_ddl(entities: list[Entity], relationships: list[Relationship]) -> s
 
     entity_names = {e.name for e in entities}
 
+    # Group entities by source page
+    groups: defaultdict[str, list[Entity]] = defaultdict(list)
     for entity in entities:
-        col_lines = [_field_ddl(f) for f in entity.fields]
+        key = entity.source_title or entity.source_url or ""
+        groups[key].append(entity)
 
-        fk_lines: list[str] = []
-        entity_field_names = {f.name for f in entity.fields}
-        for rel in relationships:
-            if rel.relation_type == "many-to-many":
-                continue
-            # Determine FK column and referenced entity.
-            # The entity holding the FK column could be either side
-            # depending on how the Relationship was constructed.
-            if rel.from_entity == entity.name and rel.to_entity == entity.name:
-                # Self-referential
-                fk_col = rel.label if rel.label else f"{entity.name.lower()}_id"
-                referenced = entity.name
-            elif rel.to_entity == entity.name and rel.from_entity != entity.name:
-                # Inferrer convention: from=referenced, to=FK holder
-                fk_col = (
-                    rel.label if rel.label
-                    else f"{rel.from_entity.lower()}_id"
-                )
-                referenced = rel.from_entity
-            elif rel.from_entity == entity.name and rel.to_entity != entity.name:
-                # Alternate convention: from=FK holder, to=referenced
-                fk_col = (
-                    rel.label if rel.label
-                    else f"{rel.to_entity.lower()}_id"
-                )
-                referenced = rel.to_entity
+    seen_group = False
+    for group_label, group_entities in groups.items():
+        if group_label:
+            url = group_entities[0].source_url or ""
+            separator = f"-- ════ {group_label} ({url}) ════"
+            if seen_group:
+                statements.append(f"\n{separator}")
             else:
-                continue
-            if fk_col not in entity_field_names:
-                continue
-            if referenced in entity_names:
-                fk_lines.append(_fk_constraint(fk_col, referenced))
+                statements.append(separator)
+            seen_group = True
 
-        all_lines = col_lines + fk_lines
-        body = ",\n".join(all_lines)
-        stmt = f'CREATE TABLE "{_esc(entity.name)}" (\n{body}\n);'
-        statements.append(stmt)
+        for entity in group_entities:
+            col_lines = [_field_ddl(f) for f in entity.fields]
+
+            fk_lines: list[str] = []
+            entity_field_names = {f.name for f in entity.fields}
+            for rel in relationships:
+                if rel.relation_type == "many-to-many":
+                    continue
+                # Determine FK column and referenced entity.
+                # The entity holding the FK column could be either side
+                # depending on how the Relationship was constructed.
+                if rel.from_entity == entity.name and rel.to_entity == entity.name:
+                    # Self-referential
+                    fk_col = rel.label if rel.label else f"{entity.name.lower()}_id"
+                    referenced = entity.name
+                elif rel.to_entity == entity.name and rel.from_entity != entity.name:
+                    # Inferrer convention: from=referenced, to=FK holder
+                    fk_col = (
+                        rel.label if rel.label
+                        else f"{rel.from_entity.lower()}_id"
+                    )
+                    referenced = rel.from_entity
+                elif rel.from_entity == entity.name and rel.to_entity != entity.name:
+                    # Alternate convention: from=FK holder, to=referenced
+                    fk_col = (
+                        rel.label if rel.label
+                        else f"{rel.to_entity.lower()}_id"
+                    )
+                    referenced = rel.to_entity
+                else:
+                    continue
+                if fk_col not in entity_field_names:
+                    continue
+                if referenced in entity_names:
+                    fk_lines.append(_fk_constraint(fk_col, referenced))
+
+            all_lines = col_lines + fk_lines
+            body = ",\n".join(all_lines)
+            stmt = f'CREATE TABLE "{_esc(entity.name)}" (\n{body}\n);'
+            statements.append(stmt)
 
     return "\n\n".join(statements)
 

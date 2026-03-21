@@ -24,6 +24,7 @@ class Entity(BaseModel):
     name: str
     fields: list[EntityField] = []
     source_url: str | None = None
+    source_title: str | None = None
 
 
 class Relationship(BaseModel):

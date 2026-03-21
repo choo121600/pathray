@@ -85,10 +85,37 @@ async def extract_tables(page: Page) -> list[TableData]:
         if caption_el:
             caption = (await caption_el.inner_text()).strip() or None
 
+        # Context heading: nearest preceding h1-h6 in the DOM
+        context_heading: str | None = None
+        try:
+            heading_result = await page.evaluate(
+                """(table) => {
+                    let el = table.previousElementSibling;
+                    while (el) {
+                        if (/^H[1-6]$/i.test(el.tagName)) return el.textContent.trim();
+                        el = el.previousElementSibling;
+                    }
+                    let parent = table.parentElement;
+                    while (parent) {
+                        el = parent.previousElementSibling;
+                        while (el) {
+                            if (/^H[1-6]$/i.test(el.tagName)) return el.textContent.trim();
+                            el = el.previousElementSibling;
+                        }
+                        parent = parent.parentElement;
+                    }
+                    return null;
+                }""",
+                table,
+            )
+            context_heading = heading_result if isinstance(heading_result, str) else None
+        except Exception:
+            context_heading = None
+
         # Collect all rows
         all_rows = await table.query_selector_all("tr")
         if not all_rows:
-            result.append(TableData(headers=[], rows=[], caption=caption))
+            result.append(TableData(headers=[], rows=[], caption=caption, context_heading=context_heading))
             continue
 
         # Detect headers: th elements in first row, or first row itself
@@ -106,6 +133,6 @@ async def extract_tables(page: Page) -> list[TableData]:
 
         rows = await _parse_rows(data_rows_els)
 
-        result.append(TableData(headers=headers, rows=rows, caption=caption))
+        result.append(TableData(headers=headers, rows=rows, caption=caption, context_heading=context_heading))
 
     return result

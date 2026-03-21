@@ -12,6 +12,7 @@ class TableData(BaseModel):
     headers: list[str] = []
     rows: list[list[str]] = []
     caption: str | None = None
+    context_heading: str | None = None
 
 
 class FormField(BaseModel):

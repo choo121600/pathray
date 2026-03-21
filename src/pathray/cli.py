@@ -134,9 +134,12 @@ def extract(
     silent: bool = typer.Option(
         False, "--silent", "-s", help="Disable progress output.",
     ),
+    dump_html: bool = typer.Option(
+        False, "--dump-html", help="Save raw HTML of each page.",
+    ),
 ) -> None:
     """Extract page structure data from crawled pages."""
-    asyncio.run(_extract_async(sitemap, output, concurrency, silent))
+    asyncio.run(_extract_async(sitemap, output, concurrency, silent, dump_html))
 
 
 async def _extract_async(
@@ -144,6 +147,7 @@ async def _extract_async(
     output: str,
     concurrency: int,
     silent: bool,
+    dump_html: bool = False,
 ) -> None:
     from rich.console import Console
 
@@ -181,6 +185,7 @@ async def _extract_async(
         output,
         concurrency=concurrency,
         progress=_RichProgress(),
+        dump_html=dump_html,
     )
     pages = await engine.run()
 
@@ -214,8 +219,24 @@ def _write_erd_outputs(
 
     # Primary ERD output
     if fmt == "json":
+        from collections import defaultdict
+
+        groups: defaultdict[str, list[Entity]] = defaultdict(list)
+        for e in entities:
+            key = e.source_title or e.source_url or ""
+            groups[key].append(e)
+
+        pages_out = []
+        for label, group_entities in groups.items():
+            url = group_entities[0].source_url
+            pages_out.append({
+                "title": label or None,
+                "url": url,
+                "entities": [e.model_dump() for e in group_entities],
+            })
+
         data = {
-            "entities": [e.model_dump() for e in entities],
+            "pages": pages_out,
             "relationships": [r.model_dump() for r in relationships],
         }
         out_path.write_text(
@@ -281,6 +302,7 @@ def erd(
         min=0.0,
         max=1.0,
     ),
+    ai: bool = typer.Option(False, "--ai", help="Use AI analysis for entity inference."),
 ) -> None:
     """Generate ERD from extracted page data."""
     from pathlib import Path as _Path
@@ -303,8 +325,13 @@ def erd(
     if not pages:
         rprint(f"[yellow]Warning:[/yellow] No page-*.json files found in {pages_dir}")
 
-    entities = infer_entities(pages, threshold=threshold)
-    relationships = infer_relationships(entities)
+    if ai:
+        rprint("AI 분석 중...")
+        from pathray.erd.ai_analyzer import analyze_with_ai
+        entities, relationships = analyze_with_ai(pages)
+    else:
+        entities = infer_entities(pages, threshold=threshold)
+        relationships = infer_relationships(entities)
 
     console.print(
         f"  Entities: [bold]{len(entities)}[/bold]  "
@@ -331,13 +358,15 @@ def run(
         "-f",
         help="ERD output format (json, mermaid).",
     ),
+    ai: bool = typer.Option(False, "--ai", help="Use AI analysis for entity inference."),
+    dump_html: bool = typer.Option(False, "--dump-html", help="Save raw HTML of each page."),
 ) -> None:
     """Run the full pipeline: crawl -> extract -> erd."""
     url = _validate_url(url)
-    asyncio.run(_run_async(url, output, fmt))
+    asyncio.run(_run_async(url, output, fmt, ai, dump_html))
 
 
-async def _run_async(url: str, output: str, fmt: str) -> None:
+async def _run_async(url: str, output: str, fmt: str, ai: bool = False, dump_html: bool = False) -> None:
     from pathlib import Path as _Path
 
     from rich.console import Console
@@ -379,7 +408,7 @@ async def _run_async(url: str, output: str, fmt: str) -> None:
         class _Silent(ExtractionProgress):
             pass
 
-        engine2 = ExtractionEngine(sitemap_path, pages_dir, progress=_Silent())
+        engine2 = ExtractionEngine(sitemap_path, pages_dir, progress=_Silent(), dump_html=dump_html)
         pages = await engine2.run()
         console.print(f"[green]✓[/green] Extracted {len(pages)} pages to {pages_dir}")
 
@@ -399,8 +428,13 @@ async def _run_async(url: str, output: str, fmt: str) -> None:
         from pathray.erd.relationship_inferrer import infer_relationships
 
         page_data = load_pages_from_dir(pages_dir)
-        entities = infer_entities(page_data)
-        relationships = infer_relationships(entities)
+        if ai:
+            console.print("AI 분석 중...")
+            from pathray.erd.ai_analyzer import analyze_with_ai
+            entities, relationships = analyze_with_ai(page_data)
+        else:
+            entities = infer_entities(page_data)
+            relationships = infer_relationships(entities)
 
         console.print(
             f"  Entities: [bold]{len(entities)}[/bold]  "

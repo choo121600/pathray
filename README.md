@@ -20,6 +20,7 @@
 - **사이트맵 크롤링** — BFS 기반 재귀 크롤링, 동시성 제어, 중복/외부 링크 자동 필터링
 - **데이터 추출** — HTML 테이블, 폼 필드, 텍스트, 메타데이터를 구조화된 JSON으로 변환
 - **ERD 생성** — 엔티티/관계 자동 추론, Mermaid 다이어그램, SQL DDL, PNG/SVG 이미지 출력
+- **AI 분석** — Claude CLI를 활용한 고품질 엔티티 추론 (`--ai` 옵션)
 
 ## 데이터 흐름
 
@@ -120,6 +121,7 @@ pathray extract [OPTIONS] SITEMAP
 | `--output` | `-o` | TEXT | `output/data/` | 추출 데이터 출력 디렉토리 |
 | `--concurrency` | `-c` | INTEGER | `3` | 최대 동시 페이지 수 (최소 1) |
 | `--silent` | `-s` | | `false` | 진행 출력 비활성화 |
+| `--dump-html` | | | `false` | 각 페이지의 원본 HTML을 저장 |
 
 ### `pathray erd`
 
@@ -135,6 +137,7 @@ pathray erd [OPTIONS] PAGES_DIR
 | `--output` | `-o` | TEXT | `output/erd.json` | 출력 파일 경로 |
 | `--format` | `-f` | TEXT | `json` | 출력 형식 (`json`, `mermaid`) |
 | `--threshold` | `-t` | FLOAT | `0.6` | 엔티티 병합 Jaccard 유사도 임계값 (0.0~1.0) |
+| `--ai` | | | `false` | AI(Claude CLI)를 사용한 엔티티 추론 |
 
 ### `pathray run`
 
@@ -149,6 +152,8 @@ pathray run [OPTIONS] URL
 | `URL` | | TEXT | (필수) | 대상 URL |
 | `--output` | `-o` | TEXT | `output/` | 출력 디렉토리 |
 | `--format` | `-f` | TEXT | `json` | ERD 출력 형식 (`json`, `mermaid`) |
+| `--ai` | | | `false` | AI(Claude CLI)를 사용한 엔티티 추론 |
+| `--dump-html` | | | `false` | 각 페이지의 원본 HTML을 저장 |
 
 ## 출력 구조
 
@@ -158,7 +163,10 @@ output/
 ├── data/
 │   ├── page-000.json     # 페이지별 추출 데이터 (테이블, 폼, 텍스트, 메타)
 │   ├── page-001.json
-│   └── ...
+│   ├── ...
+│   └── html/             # 원본 HTML (--dump-html 사용 시)
+│       ├── page-000.html
+│       └── ...
 ├── summary.json          # 추출 요약 리포트 (총 페이지/테이블/폼/이미지 수)
 ├── erd.json              # 추론된 엔티티와 관계 (JSON)
 ├── erd.mmd               # Mermaid erDiagram 문법
