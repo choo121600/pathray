@@ -2,7 +2,7 @@
 
 > Automated web structure analysis and ERD generation
 
-[한국어](#한국어) | English
+[한국어](README.ko.md) | English
 
 ![Python](https://img.shields.io/badge/Python-3.12%2B-blue)
 ![License](https://img.shields.io/badge/License-MIT-green)
@@ -394,58 +394,3 @@ uv run ruff check .
 
 [MIT](LICENSE)
 
----
-
-<a id="한국어"></a>
-
-## 한국어
-
-> 웹사이트 구조 분석 및 ERD 자동 생성 도구
-
-### 소개
-
-웹사이트의 구조와 데이터를 체계적으로 파악하려면 수동으로 모든 페이지를 방문하고 데이터를 정리해야 합니다. 이 과정은 시간이 많이 걸리고, 누락이 발생하기 쉬우며, 데이터 간의 관계를 파악하기 어렵습니다.
-
-**Pathray**는 웹사이트 URL 하나만 입력하면:
-
-1. Playwright 기반으로 전체 사이트를 크롤링하고
-2. 페이지별 데이터(테이블, 폼, 텍스트, 메타데이터)를 추출하여 정리하고
-3. 데이터베이스 ERD를 자동 생성합니다
-
-### 빠른 시작
-
-```bash
-# 설치
-git clone https://github.com/choo121600/pathray.git
-cd pathray
-uv sync
-uv run playwright install chromium
-
-# 전체 파이프라인 실행
-pathray run https://example.com
-```
-
-### 단계별 실행
-
-```bash
-# 1. 사이트맵 생성
-pathray crawl https://example.com --depth 3
-
-# 2. 페이지 데이터 추출
-pathray extract output/sitemap.json
-
-# 3. ERD 생성
-pathray erd output/data/
-
-# 4. 사이트맵 트리 시각화 (선택)
-pathray tree output/sitemap.json
-```
-
-### 주요 기능
-
-- **사이트맵 크롤링** — BFS 기반 재귀 크롤링, 동시성 제어, 중복/외부 링크 자동 필터링
-- **데이터 추출** — HTML 테이블, 폼 필드, 텍스트, 메타데이터를 구조화된 JSON으로 변환
-- **ERD 생성** — 엔티티/관계 자동 추론, Mermaid 다이어그램, SQL DDL, PNG/SVG 이미지 출력
-- **AI 분석** — Claude CLI를 활용한 고품질 엔티티 추론 (`--ai` 옵션)
-
-CLI 옵션에 대한 자세한 내용은 [영문 CLI Reference](#cli-reference)를 참조하세요.
