@@ -1,0 +1,39 @@
+{
+  "url": "https://demo-shop.example.com/",
+  "meta": {
+    "title": "Demo Shop - Online Store",
+    "description": "Your one-stop shop for electronics and accessories",
+    "keywords": ["shop", "electronics", "online store"],
+    "og_tags": {
+      "og:title": "Demo Shop",
+      "og:type": "website"
+    },
+    "canonical_url": "https://demo-shop.example.com/",
+    "images": [
+      "/images/logo.png",
+      "/images/banner.jpg"
+    ]
+  },
+  "tables": [
+    {
+      "headers": ["Category", "Items", "Best Seller"],
+      "rows": [
+        ["Keyboards", "24", "Wireless Keyboard Pro"],
+        ["Mice", "18", "Ergonomic Mouse X1"],
+        ["Monitors", "12", "4K UltraWide 34\""],
+        ["Headsets", "15", "Noise Cancelling H7"]
+      ]
+    }
+  ],
+  "forms": [],
+  "text_blocks": [
+    {
+      "tag": "h1",
+      "text": "Welcome to Demo Shop"
+    },
+    {
+      "tag": "p",
+      "text": "Discover the best electronics at unbeatable prices."
+    }
+  ]
+}

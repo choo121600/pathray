@@ -1,0 +1,51 @@
+{
+  "url": "https://demo-shop.example.com/products",
+  "meta": {
+    "title": "Products - Demo Shop",
+    "description": "Browse our full catalog of electronics",
+    "keywords": ["products", "catalog", "electronics"],
+    "og_tags": {},
+    "canonical_url": "https://demo-shop.example.com/products",
+    "images": [
+      "/images/products/keyboard.jpg",
+      "/images/products/mouse.jpg",
+      "/images/products/monitor.jpg"
+    ]
+  },
+  "tables": [
+    {
+      "headers": ["Product Name", "Category", "Price", "Stock", "Rating"],
+      "rows": [
+        ["Wireless Keyboard Pro", "Keyboards", "$79.99", "142", "4.5"],
+        ["Ergonomic Mouse X1", "Mice", "$49.99", "89", "4.7"],
+        ["4K UltraWide 34\"", "Monitors", "$599.99", "23", "4.8"],
+        ["Noise Cancelling H7", "Headsets", "$129.99", "56", "4.3"],
+        ["USB-C Hub 7-in-1", "Accessories", "$39.99", "201", "4.1"],
+        ["Mechanical Keyboard RGB", "Keyboards", "$119.99", "67", "4.6"]
+      ]
+    }
+  ],
+  "forms": [
+    {
+      "action": "/products/search",
+      "method": "GET",
+      "fields": [
+        {"name": "query", "type": "text", "required": true},
+        {"name": "category", "type": "select", "required": false},
+        {"name": "min_price", "type": "number", "required": false},
+        {"name": "max_price", "type": "number", "required": false},
+        {"name": "sort_by", "type": "select", "required": false}
+      ]
+    }
+  ],
+  "text_blocks": [
+    {
+      "tag": "h1",
+      "text": "All Products"
+    },
+    {
+      "tag": "p",
+      "text": "Showing 6 products across 4 categories"
+    }
+  ]
+}

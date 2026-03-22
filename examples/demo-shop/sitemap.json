@@ -1,0 +1,64 @@
+[
+  {
+    "url": "https://demo-shop.example.com/",
+    "title": "Demo Shop - Online Store",
+    "depth": 0,
+    "status_code": 200,
+    "links": [
+      "https://demo-shop.example.com/products",
+      "https://demo-shop.example.com/products/1",
+      "https://demo-shop.example.com/cart",
+      "https://demo-shop.example.com/login"
+    ],
+    "timestamp": "2026-03-22T10:00:00.000000Z"
+  },
+  {
+    "url": "https://demo-shop.example.com/products",
+    "title": "Products - Demo Shop",
+    "depth": 1,
+    "status_code": 200,
+    "links": [
+      "https://demo-shop.example.com/",
+      "https://demo-shop.example.com/products/1",
+      "https://demo-shop.example.com/products/2",
+      "https://demo-shop.example.com/products/3",
+      "https://demo-shop.example.com/cart"
+    ],
+    "timestamp": "2026-03-22T10:00:01.000000Z"
+  },
+  {
+    "url": "https://demo-shop.example.com/products/1",
+    "title": "Wireless Keyboard - Demo Shop",
+    "depth": 2,
+    "status_code": 200,
+    "links": [
+      "https://demo-shop.example.com/",
+      "https://demo-shop.example.com/products",
+      "https://demo-shop.example.com/cart"
+    ],
+    "timestamp": "2026-03-22T10:00:02.000000Z"
+  },
+  {
+    "url": "https://demo-shop.example.com/cart",
+    "title": "Shopping Cart - Demo Shop",
+    "depth": 1,
+    "status_code": 200,
+    "links": [
+      "https://demo-shop.example.com/",
+      "https://demo-shop.example.com/products",
+      "https://demo-shop.example.com/login"
+    ],
+    "timestamp": "2026-03-22T10:00:03.000000Z"
+  },
+  {
+    "url": "https://demo-shop.example.com/login",
+    "title": "Login - Demo Shop",
+    "depth": 1,
+    "status_code": 200,
+    "links": [
+      "https://demo-shop.example.com/",
+      "https://demo-shop.example.com/register"
+    ],
+    "timestamp": "2026-03-22T10:00:04.000000Z"
+  }
+]

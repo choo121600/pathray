@@ -1,28 +1,190 @@
 # Pathray
 
-> 웹사이트 구조 분석 및 ERD 자동 생성 도구
+> Automated web structure analysis and ERD generation
+
+[한국어](#한국어) | English
 
 ![Python](https://img.shields.io/badge/Python-3.12%2B-blue)
 ![License](https://img.shields.io/badge/License-MIT-green)
 
-## 소개
+## What is Pathray?
 
-웹사이트의 구조와 데이터를 체계적으로 파악하려면 수동으로 모든 페이지를 방문하고 데이터를 정리해야 합니다. 이 과정은 시간이 많이 걸리고, 누락이 발생하기 쉬우며, 데이터 간의 관계를 파악하기 어렵습니다.
+Analyzing a website's structure and data manually means visiting every page, cataloging tables and forms, and figuring out how the data relates. It's tedious, error-prone, and hard to keep up-to-date.
 
-**Pathray**는 웹사이트 URL 하나만 입력하면:
+**Pathray** automates this entire process. Give it a URL, and it will:
 
-1. Playwright 기반으로 전체 사이트를 크롤링하고
-2. 페이지별 데이터(테이블, 폼, 텍스트, 메타데이터)를 추출하여 정리하고
-3. 데이터베이스 ERD를 자동 생성합니다
+1. **Crawl** the entire site using Playwright (BFS, concurrency-controlled)
+2. **Extract** structured data — tables, forms, text, metadata — from every page
+3. **Generate** a database ERD with inferred entities and relationships
 
-## 주요 기능
+## Quick Start
 
-- **사이트맵 크롤링** — BFS 기반 재귀 크롤링, 동시성 제어, 중복/외부 링크 자동 필터링
-- **데이터 추출** — HTML 테이블, 폼 필드, 텍스트, 메타데이터를 구조화된 JSON으로 변환
-- **ERD 생성** — 엔티티/관계 자동 추론, Mermaid 다이어그램, SQL DDL, PNG/SVG 이미지 출력
-- **AI 분석** — Claude CLI를 활용한 고품질 엔티티 추론 (`--ai` 옵션)
+```bash
+# Install
+git clone https://github.com/choo121600/pathray.git
+cd pathray
+uv sync
+uv run playwright install chromium
 
-## 데이터 흐름
+# Run the full pipeline on any website
+pathray run https://demo-shop.example.com
+```
+
+That's it. Check the `output/` directory for your results.
+
+## Example Output
+
+Running `pathray run` on an e-commerce site produces the following (see [`examples/demo-shop/`](examples/demo-shop/) for full sample data):
+
+### Site Structure Tree
+
+```mermaid
+flowchart LR
+    root(["demo-shop.example.com"])
+    products["products\nProducts"]
+    root --> products
+    products_1["1\nWireless Keyboard Pro"]
+    products --> products_1
+    cart["cart\nShopping Cart"]
+    root --> cart
+    login["login\nLogin"]
+    root --> login
+```
+
+### Extracted Data (per page)
+
+Each page produces a structured JSON with tables, forms, text, and metadata:
+
+```json
+{
+  "url": "https://demo-shop.example.com/products",
+  "tables": [
+    {
+      "headers": ["Product Name", "Category", "Price", "Stock", "Rating"],
+      "rows": [
+        ["Wireless Keyboard Pro", "Keyboards", "$79.99", "142", "4.5"],
+        ["Ergonomic Mouse X1", "Mice", "$49.99", "89", "4.7"],
+        ["4K UltraWide 34\"", "Monitors", "$599.99", "23", "4.8"]
+      ]
+    }
+  ],
+  "forms": [
+    {
+      "action": "/products/search",
+      "method": "GET",
+      "fields": [
+        {"name": "query", "type": "text", "required": true},
+        {"name": "category", "type": "select", "required": false}
+      ]
+    }
+  ]
+}
+```
+
+### Generated ERD
+
+```mermaid
+erDiagram
+    Category {
+        TEXT category
+        INTEGER items
+        TEXT best_seller
+    }
+    Product {
+        TEXT product_name
+        TEXT category
+        TEXT price
+        INTEGER stock
+        FLOAT rating
+    }
+    Review {
+        TEXT reviewer
+        INTEGER rating
+        DATE date
+        TEXT comment
+    }
+    Cart {
+        TEXT product
+        TEXT price
+        INTEGER quantity
+        TEXT subtotal
+    }
+    Checkout {
+        TEXT shipping_name
+        VARCHAR shipping_email
+        TEXT shipping_address
+        TEXT payment_method
+    }
+    Login {
+        VARCHAR email
+        TEXT password
+        BOOLEAN remember_me
+    }
+    Registration {
+        TEXT reg_name
+        VARCHAR reg_email
+        TEXT reg_password
+        BOOLEAN agree_terms
+    }
+
+    Category ||--o{ Product : "has"
+    Product ||--o{ Review : "has"
+    Product ||--o{ Cart : "added_to"
+    Cart ||--|| Checkout : "proceeds_to"
+```
+
+### Generated SQL DDL
+
+```sql
+CREATE TABLE "Product" (
+    "product_name" TEXT,
+    "category" TEXT,
+    "price" TEXT,
+    "stock" TEXT,
+    "rating" TEXT
+);
+
+CREATE TABLE "Review" (
+    "reviewer" TEXT,
+    "rating" TEXT,
+    "date" TEXT,
+    "comment" TEXT
+);
+
+CREATE TABLE "Checkout" (
+    "shipping_name" TEXT,
+    "shipping_email" VARCHAR,
+    "shipping_address" TEXT,
+    "shipping_city" TEXT,
+    "shipping_zip" TEXT,
+    "payment_method" TEXT,
+    "card_number" TEXT,
+    "card_expiry" TEXT,
+    "coupon_code" TEXT
+);
+```
+
+### Extraction Summary
+
+```json
+{
+  "total_pages": 5,
+  "total_tables": 5,
+  "total_forms": 4,
+  "total_images": 9,
+  "unique_form_fields": ["email", "password", "product_id", "quantity", "shipping_name", "..."]
+}
+```
+
+## Features
+
+- **Sitemap Crawling** — BFS-based recursive crawling with concurrency control, automatic dedup and external link filtering
+- **Data Extraction** — HTML tables, form fields, text blocks, and metadata converted to structured JSON
+- **ERD Generation** — Auto-inferred entities and relationships, output as Mermaid diagrams, SQL DDL, PNG/SVG images
+- **AI Analysis** — High-quality entity inference using Claude CLI (`--ai` flag)
+- **Site Tree Visualization** — Mermaid tree diagram of the entire site structure
+
+## Data Flow
 
 ```
 [Root URL] → [Playwright Crawler] → [Sitemap JSON]
@@ -38,34 +200,228 @@
                                [PNG/SVG Image]
 ```
 
-## 설치
+## Installation
 
-### 요구 사항
+### Requirements
 
-- Python 3.12 이상
-- [uv](https://docs.astral.sh/uv/) 패키지 매니저
-- Node.js (ERD 이미지 렌더링용, 선택)
+- Python 3.12+
+- [uv](https://docs.astral.sh/uv/) package manager
+- Node.js (optional, for ERD image rendering)
 
-### 설치 방법
+### Setup
 
 ```bash
-# 저장소 클론
 git clone https://github.com/choo121600/pathray.git
 cd pathray
-
-# 의존성 설치
 uv sync
-
-# Playwright 브라우저 설치
 uv run playwright install chromium
 ```
 
-## 빠른 시작
+## Usage
 
-### 전체 파이프라인 (권장)
+### Full Pipeline (Recommended)
 
 ```bash
-# URL 하나로 크롤링 → 추출 → ERD 생성까지 한 번에 실행
+# Crawl → Extract → Generate ERD in one command
+pathray run https://example.com
+```
+
+### Step-by-Step
+
+```bash
+# 1. Crawl and generate sitemap
+pathray crawl https://example.com --depth 3
+
+# 2. Extract data from each page
+pathray extract output/sitemap.json
+
+# 3. Generate ERD from extracted data
+pathray erd output/data/
+
+# 4. Visualize site structure (optional)
+pathray tree output/sitemap.json
+```
+
+### With AI Analysis
+
+```bash
+# Use Claude CLI for smarter entity inference
+pathray run https://example.com --ai
+```
+
+## CLI Reference
+
+### Global Options
+
+| Option | Description |
+|--------|-------------|
+| `--version`, `-v` | Show version |
+| `--help` | Show help |
+
+### `pathray crawl`
+
+Crawl a website and generate a sitemap.
+
+```
+pathray crawl [OPTIONS] URL
+```
+
+| Option | Short | Type | Default | Description |
+|--------|-------|------|---------|-------------|
+| `URL` | | TEXT | (required) | Target URL |
+| `--depth` | `-d` | INTEGER | `5` | Max crawl depth |
+| `--concurrency` | `-c` | INTEGER | `3` | Max concurrent pages |
+| `--output` | `-o` | TEXT | `output/sitemap.json` | Output file path |
+| `--silent` | `-s` | | `false` | Suppress progress output |
+
+### `pathray extract`
+
+Visit each page in the sitemap and extract structured data.
+
+```
+pathray extract [OPTIONS] SITEMAP
+```
+
+| Option | Short | Type | Default | Description |
+|--------|-------|------|---------|-------------|
+| `SITEMAP` | | TEXT | (required) | Sitemap JSON file path |
+| `--output` | `-o` | TEXT | `output/data/` | Output directory |
+| `--concurrency` | `-c` | INTEGER | `3` | Max concurrent pages (min 1) |
+| `--silent` | `-s` | | `false` | Suppress progress output |
+| `--dump-html` | | | `false` | Save raw HTML for each page |
+
+### `pathray erd`
+
+Generate an ERD from extracted page data.
+
+```
+pathray erd [OPTIONS] PAGES_DIR
+```
+
+| Option | Short | Type | Default | Description |
+|--------|-------|------|---------|-------------|
+| `PAGES_DIR` | | TEXT | (required) | Extracted pages directory |
+| `--output` | `-o` | TEXT | `output/erd.json` | Output file path |
+| `--format` | `-f` | TEXT | `json` | Output format (`json`, `mermaid`) |
+| `--threshold` | `-t` | FLOAT | `0.6` | Entity merge Jaccard similarity threshold (0.0~1.0) |
+| `--ai` | | | `false` | Use AI (Claude CLI) for entity inference |
+
+### `pathray tree`
+
+Visualize crawled sitemap as a Mermaid tree diagram.
+
+```
+pathray tree [OPTIONS] SITEMAP
+```
+
+| Option | Short | Type | Default | Description |
+|--------|-------|------|---------|-------------|
+| `SITEMAP` | | TEXT | (required) | Sitemap JSON file path |
+| `--output` | `-o` | TEXT | `output/sitemap-tree.mmd` | Output file path |
+
+### `pathray run`
+
+Run the full pipeline: crawl → extract → erd
+
+```
+pathray run [OPTIONS] URL
+```
+
+| Option | Short | Type | Default | Description |
+|--------|-------|------|---------|-------------|
+| `URL` | | TEXT | (required) | Target URL |
+| `--output` | `-o` | TEXT | `output/` | Output directory |
+| `--depth` | `-d` | INTEGER | `0` | Max crawl depth (0 = unlimited) |
+| `--concurrency` | `-c` | INTEGER | `3` | Max concurrent pages |
+| `--format` | `-f` | TEXT | `json` | ERD output format (`json`, `mermaid`) |
+| `--ai` | | | `false` | Use AI (Claude CLI) for entity inference |
+| `--dump-html` | | | `false` | Save raw HTML for each page |
+
+## Output Structure
+
+```
+output/
+├── sitemap.json          # Crawled sitemap (URLs, titles, depths, status codes)
+├── sitemap-tree.mmd      # Site structure Mermaid tree diagram
+├── sitemap-tree.png      # Site structure tree image (requires Node.js)
+├── sitemap-tree.svg      # Site structure tree SVG (requires Node.js)
+├── data/
+│   ├── page-000.json     # Per-page extracted data (tables, forms, text, meta)
+│   ├── page-001.json
+│   ├── ...
+│   └── html/             # Raw HTML (with --dump-html)
+│       ├── page-000.html
+│       └── ...
+├── summary.json          # Extraction summary report
+├── erd.json              # Inferred entities and relationships (JSON)
+├── erd.mmd               # Mermaid erDiagram syntax
+├── erd.png               # ERD image (requires Node.js)
+├── erd.svg               # ERD SVG (requires Node.js)
+└── schema.sql            # SQL CREATE TABLE DDL
+```
+
+## Development
+
+```bash
+# Setup
+uv sync
+uv run playwright install chromium
+
+# Run tests
+uv run pytest
+
+# Run tests with coverage
+uv run pytest --cov=pathray
+
+# Lint
+uv run ruff check .
+```
+
+## Tech Stack
+
+| Area | Technology |
+|------|-----------|
+| Language | Python 3.12+ |
+| Package Manager | uv |
+| Crawling | Playwright |
+| CLI | Typer + Rich |
+| Data Models | Pydantic v2 |
+| ERD Rendering | Mermaid (mermaid-cli) |
+| Testing | pytest + pytest-asyncio |
+| Linter | ruff |
+
+## License
+
+[MIT](LICENSE)
+
+---
+
+<a id="한국어"></a>
+
+## 한국어
+
+> 웹사이트 구조 분석 및 ERD 자동 생성 도구
+
+### 소개
+
+웹사이트의 구조와 데이터를 체계적으로 파악하려면 수동으로 모든 페이지를 방문하고 데이터를 정리해야 합니다. 이 과정은 시간이 많이 걸리고, 누락이 발생하기 쉬우며, 데이터 간의 관계를 파악하기 어렵습니다.
+
+**Pathray**는 웹사이트 URL 하나만 입력하면:
+
+1. Playwright 기반으로 전체 사이트를 크롤링하고
+2. 페이지별 데이터(테이블, 폼, 텍스트, 메타데이터)를 추출하여 정리하고
+3. 데이터베이스 ERD를 자동 생성합니다
+
+### 빠른 시작
+
+```bash
+# 설치
+git clone https://github.com/choo121600/pathray.git
+cd pathray
+uv sync
+uv run playwright install chromium
+
+# 전체 파이프라인 실행
 pathray run https://example.com
 ```
 
@@ -85,155 +441,11 @@ pathray erd output/data/
 pathray tree output/sitemap.json
 ```
 
-## CLI 레퍼런스
+### 주요 기능
 
-### 글로벌 옵션
+- **사이트맵 크롤링** — BFS 기반 재귀 크롤링, 동시성 제어, 중복/외부 링크 자동 필터링
+- **데이터 추출** — HTML 테이블, 폼 필드, 텍스트, 메타데이터를 구조화된 JSON으로 변환
+- **ERD 생성** — 엔티티/관계 자동 추론, Mermaid 다이어그램, SQL DDL, PNG/SVG 이미지 출력
+- **AI 분석** — Claude CLI를 활용한 고품질 엔티티 추론 (`--ai` 옵션)
 
-| 옵션 | 설명 |
-|------|------|
-| `--version`, `-v` | 버전 출력 |
-| `--help` | 도움말 표시 |
-
-### `pathray crawl`
-
-웹사이트를 크롤링하여 사이트맵을 생성합니다.
-
-```
-pathray crawl [OPTIONS] URL
-```
-
-| 옵션 | 단축 | 타입 | 기본값 | 설명 |
-|------|------|------|--------|------|
-| `URL` | | TEXT | (필수) | 크롤링 대상 URL |
-| `--depth` | `-d` | INTEGER | `5` | 최대 크롤링 깊이 |
-| `--concurrency` | `-c` | INTEGER | `3` | 최대 동시 크롤링 페이지 수 |
-| `--output` | `-o` | TEXT | `output/sitemap.json` | 출력 파일 경로 |
-| `--silent` | `-s` | | `false` | 진행 출력 비활성화 |
-
-### `pathray extract`
-
-사이트맵의 각 페이지를 방문하여 구조화된 데이터를 추출합니다.
-
-```
-pathray extract [OPTIONS] SITEMAP
-```
-
-| 옵션 | 단축 | 타입 | 기본값 | 설명 |
-|------|------|------|--------|------|
-| `SITEMAP` | | TEXT | (필수) | 사이트맵 JSON 파일 경로 |
-| `--output` | `-o` | TEXT | `output/data/` | 추출 데이터 출력 디렉토리 |
-| `--concurrency` | `-c` | INTEGER | `3` | 최대 동시 페이지 수 (최소 1) |
-| `--silent` | `-s` | | `false` | 진행 출력 비활성화 |
-| `--dump-html` | | | `false` | 각 페이지의 원본 HTML을 저장 |
-
-### `pathray erd`
-
-추출된 페이지 데이터로부터 ERD를 생성합니다.
-
-```
-pathray erd [OPTIONS] PAGES_DIR
-```
-
-| 옵션 | 단축 | 타입 | 기본값 | 설명 |
-|------|------|------|--------|------|
-| `PAGES_DIR` | | TEXT | (필수) | 추출된 페이지 디렉토리 경로 |
-| `--output` | `-o` | TEXT | `output/erd.json` | 출력 파일 경로 |
-| `--format` | `-f` | TEXT | `json` | 출력 형식 (`json`, `mermaid`) |
-| `--threshold` | `-t` | FLOAT | `0.6` | 엔티티 병합 Jaccard 유사도 임계값 (0.0~1.0) |
-| `--ai` | | | `false` | AI(Claude CLI)를 사용한 엔티티 추론 |
-
-### `pathray tree`
-
-크롤링된 사이트맵을 Mermaid 트리 다이어그램과 이미지로 시각화합니다.
-
-```
-pathray tree [OPTIONS] SITEMAP
-```
-
-| 옵션 | 단축 | 타입 | 기본값 | 설명 |
-|------|------|------|--------|------|
-| `SITEMAP` | | TEXT | (필수) | 사이트맵 JSON 파일 경로 |
-| `--output` | `-o` | TEXT | `output/sitemap-tree.mmd` | 출력 파일 경로 |
-
-### `pathray run`
-
-전체 파이프라인을 한 번에 실행합니다: crawl → extract → erd
-
-```
-pathray run [OPTIONS] URL
-```
-
-| 옵션 | 단축 | 타입 | 기본값 | 설명 |
-|------|------|------|--------|------|
-| `URL` | | TEXT | (필수) | 대상 URL |
-| `--output` | `-o` | TEXT | `output/` | 출력 디렉토리 |
-| `--depth` | `-d` | INTEGER | `0` | 최대 크롤링 깊이 (0 = 무제한) |
-| `--concurrency` | `-c` | INTEGER | `3` | 최대 동시 크롤링 페이지 수 |
-| `--format` | `-f` | TEXT | `json` | ERD 출력 형식 (`json`, `mermaid`) |
-| `--ai` | | | `false` | AI(Claude CLI)를 사용한 엔티티 추론 |
-| `--dump-html` | | | `false` | 각 페이지의 원본 HTML을 저장 |
-
-## 출력 구조
-
-```
-output/
-├── sitemap.json          # 크롤링된 사이트맵 (URL, 제목, 깊이, 상태코드)
-├── sitemap-tree.mmd      # 사이트 구조 Mermaid 트리 다이어그램
-├── sitemap-tree.png      # 사이트 구조 트리 이미지 (Node.js 필요)
-├── sitemap-tree.svg      # 사이트 구조 트리 SVG (Node.js 필요)
-├── data/
-│   ├── page-000.json     # 페이지별 추출 데이터 (테이블, 폼, 텍스트, 메타)
-│   ├── page-001.json
-│   ├── ...
-│   └── html/             # 원본 HTML (--dump-html 사용 시)
-│       ├── page-000.html
-│       └── ...
-├── summary.json          # 추출 요약 리포트 (총 페이지/테이블/폼/이미지 수)
-├── erd.json              # 추론된 엔티티와 관계 (JSON)
-├── erd.mmd               # Mermaid erDiagram 문법
-├── erd.png               # ERD 이미지 (Node.js 필요)
-├── erd.svg               # ERD SVG (Node.js 필요)
-└── schema.sql            # SQL CREATE TABLE DDL
-```
-
-## 개발
-
-### 개발 환경 설정
-
-```bash
-uv sync
-uv run playwright install chromium
-```
-
-### 테스트 실행
-
-```bash
-# 전체 테스트
-uv run pytest
-
-# 커버리지 포함
-uv run pytest --cov=pathray
-```
-
-### 린팅
-
-```bash
-uv run ruff check .
-```
-
-## 기술 스택
-
-| 영역 | 기술 |
-|------|------|
-| 언어 | Python 3.12+ |
-| 패키지 매니저 | uv |
-| 크롤링 | Playwright |
-| CLI | Typer + Rich |
-| 데이터 모델 | Pydantic v2 |
-| ERD 렌더링 | Mermaid (mermaid-cli) |
-| 테스트 | pytest + pytest-asyncio |
-| 린터 | ruff |
-
-## License
-
-MIT
+CLI 옵션에 대한 자세한 내용은 [영문 CLI Reference](#cli-reference)를 참조하세요.

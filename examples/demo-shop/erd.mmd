@@ -1,0 +1,77 @@
+erDiagram
+    %% ── https://demo-shop.example.com/ ──
+    Category {
+        TEXT category "Category"
+        INTEGER items "Items"
+        TEXT best_seller "Best Seller"
+    }
+    %% ── https://demo-shop.example.com/products ──
+    Product {
+        TEXT product_name "Product Name"
+        TEXT category "Category"
+        TEXT price "Price"
+        INTEGER stock "Stock"
+        FLOAT rating "Rating"
+    }
+    ProductSearch {
+        TEXT query
+        TEXT category
+        INTEGER min_price
+        INTEGER max_price
+        TEXT sort_by
+    }
+    %% ── https://demo-shop.example.com/products/1 ──
+    ProductSpecification {
+        TEXT specification "Specification"
+        TEXT value "Value"
+    }
+    Review {
+        TEXT reviewer "Reviewer"
+        INTEGER rating "Rating"
+        DATE date "Date"
+        TEXT comment "Comment"
+    }
+    CartItem {
+        INTEGER product_id
+        INTEGER quantity
+        TEXT color
+    }
+    %% ── https://demo-shop.example.com/cart ──
+    Cart {
+        TEXT product "Product"
+        TEXT price "Price"
+        INTEGER quantity "Quantity"
+        TEXT subtotal "Subtotal"
+    }
+    Checkout {
+        TEXT shipping_name
+        VARCHAR shipping_email
+        TEXT shipping_address
+        TEXT shipping_city
+        TEXT shipping_zip
+        TEXT payment_method
+        TEXT card_number
+        TEXT card_expiry
+        TEXT coupon_code
+    }
+    %% ── https://demo-shop.example.com/login ──
+    Login {
+        VARCHAR email
+        TEXT password
+        BOOLEAN remember_me
+    }
+    Registration {
+        TEXT reg_name
+        VARCHAR reg_email
+        TEXT reg_password
+        TEXT reg_password_confirm
+        TEXT reg_phone
+        BOOLEAN agree_terms
+    }
+
+    Category ||--o{ Product : "has"
+    Product ||--o{ Review : "has"
+    Product ||--o{ CartItem : "added_to"
+    CartItem }o--|| Cart : "in"
+    Cart ||--|| Checkout : "proceeds_to"
+    Login ||--|| Registration : "or"

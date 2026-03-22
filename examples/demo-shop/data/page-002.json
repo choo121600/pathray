@@ -1,0 +1,58 @@
+{
+  "url": "https://demo-shop.example.com/products/1",
+  "meta": {
+    "title": "Wireless Keyboard Pro - Demo Shop",
+    "description": "Wireless Keyboard Pro - compact, reliable, and ergonomic",
+    "keywords": ["keyboard", "wireless", "ergonomic"],
+    "og_tags": {
+      "og:title": "Wireless Keyboard Pro",
+      "og:image": "/images/products/keyboard-pro.jpg"
+    },
+    "canonical_url": "https://demo-shop.example.com/products/1",
+    "images": [
+      "/images/products/keyboard-pro.jpg",
+      "/images/products/keyboard-pro-side.jpg"
+    ]
+  },
+  "tables": [
+    {
+      "headers": ["Specification", "Value"],
+      "rows": [
+        ["Brand", "TechCo"],
+        ["Connectivity", "Bluetooth 5.0 / USB-C"],
+        ["Battery Life", "Up to 6 months"],
+        ["Weight", "450g"],
+        ["Dimensions", "285 x 120 x 18mm"]
+      ]
+    },
+    {
+      "headers": ["Reviewer", "Rating", "Date", "Comment"],
+      "rows": [
+        ["Alice", "5", "2026-03-15", "Best keyboard I've ever used!"],
+        ["Bob", "4", "2026-03-10", "Great quality, wish it had backlighting"],
+        ["Charlie", "5", "2026-03-01", "Perfect for daily use"]
+      ]
+    }
+  ],
+  "forms": [
+    {
+      "action": "/cart/add",
+      "method": "POST",
+      "fields": [
+        {"name": "product_id", "type": "hidden", "required": true},
+        {"name": "quantity", "type": "number", "required": true},
+        {"name": "color", "type": "select", "required": false}
+      ]
+    }
+  ],
+  "text_blocks": [
+    {
+      "tag": "h1",
+      "text": "Wireless Keyboard Pro"
+    },
+    {
+      "tag": "p",
+      "text": "$79.99 — In Stock (142 available)"
+    }
+  ]
+}

@@ -1,0 +1,47 @@
+{
+  "url": "https://demo-shop.example.com/cart",
+  "meta": {
+    "title": "Shopping Cart - Demo Shop",
+    "description": "Review your cart and checkout",
+    "keywords": ["cart", "checkout"],
+    "og_tags": {},
+    "canonical_url": "https://demo-shop.example.com/cart",
+    "images": []
+  },
+  "tables": [
+    {
+      "headers": ["Product", "Price", "Quantity", "Subtotal"],
+      "rows": [
+        ["Wireless Keyboard Pro", "$79.99", "1", "$79.99"],
+        ["USB-C Hub 7-in-1", "$39.99", "2", "$79.98"]
+      ]
+    }
+  ],
+  "forms": [
+    {
+      "action": "/checkout",
+      "method": "POST",
+      "fields": [
+        {"name": "shipping_name", "type": "text", "required": true},
+        {"name": "shipping_email", "type": "email", "required": true},
+        {"name": "shipping_address", "type": "text", "required": true},
+        {"name": "shipping_city", "type": "text", "required": true},
+        {"name": "shipping_zip", "type": "text", "required": true},
+        {"name": "payment_method", "type": "select", "required": true},
+        {"name": "card_number", "type": "text", "required": false},
+        {"name": "card_expiry", "type": "text", "required": false},
+        {"name": "coupon_code", "type": "text", "required": false}
+      ]
+    }
+  ],
+  "text_blocks": [
+    {
+      "tag": "h1",
+      "text": "Shopping Cart"
+    },
+    {
+      "tag": "p",
+      "text": "2 items — Total: $159.97"
+    }
+  ]
+}

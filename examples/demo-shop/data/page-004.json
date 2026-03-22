@@ -1,0 +1,45 @@
+{
+  "url": "https://demo-shop.example.com/login",
+  "meta": {
+    "title": "Login - Demo Shop",
+    "description": "Sign in to your Demo Shop account",
+    "keywords": ["login", "account"],
+    "og_tags": {},
+    "canonical_url": "https://demo-shop.example.com/login",
+    "images": []
+  },
+  "tables": [],
+  "forms": [
+    {
+      "action": "/auth/login",
+      "method": "POST",
+      "fields": [
+        {"name": "email", "type": "email", "required": true},
+        {"name": "password", "type": "password", "required": true},
+        {"name": "remember_me", "type": "checkbox", "required": false}
+      ]
+    },
+    {
+      "action": "/auth/register",
+      "method": "POST",
+      "fields": [
+        {"name": "reg_name", "type": "text", "required": true},
+        {"name": "reg_email", "type": "email", "required": true},
+        {"name": "reg_password", "type": "password", "required": true},
+        {"name": "reg_password_confirm", "type": "password", "required": true},
+        {"name": "reg_phone", "type": "tel", "required": false},
+        {"name": "agree_terms", "type": "checkbox", "required": true}
+      ]
+    }
+  ],
+  "text_blocks": [
+    {
+      "tag": "h1",
+      "text": "Sign In"
+    },
+    {
+      "tag": "h2",
+      "text": "Create Account"
+    }
+  ]
+}

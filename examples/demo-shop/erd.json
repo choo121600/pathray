@@ -1,0 +1,160 @@
+{
+  "pages": [
+    {
+      "title": "Demo Shop - Online Store",
+      "url": "https://demo-shop.example.com/",
+      "entities": [
+        {
+          "name": "Category",
+          "fields": [
+            {"name": "category", "field_type": "TEXT", "nullable": true, "is_primary": false},
+            {"name": "items", "field_type": "TEXT", "nullable": true, "is_primary": false},
+            {"name": "best_seller", "field_type": "TEXT", "nullable": true, "is_primary": false}
+          ],
+          "source_url": "https://demo-shop.example.com/",
+          "source_title": "Demo Shop - Online Store"
+        }
+      ],
+      "relationships": []
+    },
+    {
+      "title": "Products - Demo Shop",
+      "url": "https://demo-shop.example.com/products",
+      "entities": [
+        {
+          "name": "Product",
+          "fields": [
+            {"name": "product_name", "field_type": "TEXT", "nullable": true, "is_primary": false},
+            {"name": "category", "field_type": "TEXT", "nullable": true, "is_primary": false},
+            {"name": "price", "field_type": "TEXT", "nullable": true, "is_primary": false},
+            {"name": "stock", "field_type": "TEXT", "nullable": true, "is_primary": false},
+            {"name": "rating", "field_type": "TEXT", "nullable": true, "is_primary": false}
+          ],
+          "source_url": "https://demo-shop.example.com/products",
+          "source_title": "Products - Demo Shop"
+        },
+        {
+          "name": "ProductSearch",
+          "fields": [
+            {"name": "query", "field_type": "TEXT", "nullable": true, "is_primary": false},
+            {"name": "category", "field_type": "TEXT", "nullable": false, "is_primary": false},
+            {"name": "min_price", "field_type": "INTEGER", "nullable": false, "is_primary": false},
+            {"name": "max_price", "field_type": "INTEGER", "nullable": false, "is_primary": false},
+            {"name": "sort_by", "field_type": "TEXT", "nullable": false, "is_primary": false}
+          ],
+          "source_url": "https://demo-shop.example.com/products",
+          "source_title": "Products - Demo Shop"
+        }
+      ],
+      "relationships": []
+    },
+    {
+      "title": "Wireless Keyboard Pro - Demo Shop",
+      "url": "https://demo-shop.example.com/products/1",
+      "entities": [
+        {
+          "name": "ProductSpecification",
+          "fields": [
+            {"name": "specification", "field_type": "TEXT", "nullable": true, "is_primary": false},
+            {"name": "value", "field_type": "TEXT", "nullable": true, "is_primary": false}
+          ],
+          "source_url": "https://demo-shop.example.com/products/1",
+          "source_title": "Wireless Keyboard Pro - Demo Shop"
+        },
+        {
+          "name": "Review",
+          "fields": [
+            {"name": "reviewer", "field_type": "TEXT", "nullable": true, "is_primary": false},
+            {"name": "rating", "field_type": "TEXT", "nullable": true, "is_primary": false},
+            {"name": "date", "field_type": "TEXT", "nullable": true, "is_primary": false},
+            {"name": "comment", "field_type": "TEXT", "nullable": true, "is_primary": false}
+          ],
+          "source_url": "https://demo-shop.example.com/products/1",
+          "source_title": "Wireless Keyboard Pro - Demo Shop"
+        },
+        {
+          "name": "CartItem",
+          "fields": [
+            {"name": "product_id", "field_type": "INTEGER", "nullable": true, "is_primary": false},
+            {"name": "quantity", "field_type": "INTEGER", "nullable": true, "is_primary": false},
+            {"name": "color", "field_type": "TEXT", "nullable": false, "is_primary": false}
+          ],
+          "source_url": "https://demo-shop.example.com/products/1",
+          "source_title": "Wireless Keyboard Pro - Demo Shop"
+        }
+      ],
+      "relationships": []
+    },
+    {
+      "title": "Shopping Cart - Demo Shop",
+      "url": "https://demo-shop.example.com/cart",
+      "entities": [
+        {
+          "name": "Cart",
+          "fields": [
+            {"name": "product", "field_type": "TEXT", "nullable": true, "is_primary": false},
+            {"name": "price", "field_type": "TEXT", "nullable": true, "is_primary": false},
+            {"name": "quantity", "field_type": "TEXT", "nullable": true, "is_primary": false},
+            {"name": "subtotal", "field_type": "TEXT", "nullable": true, "is_primary": false}
+          ],
+          "source_url": "https://demo-shop.example.com/cart",
+          "source_title": "Shopping Cart - Demo Shop"
+        },
+        {
+          "name": "Checkout",
+          "fields": [
+            {"name": "shipping_name", "field_type": "TEXT", "nullable": true, "is_primary": false},
+            {"name": "shipping_email", "field_type": "VARCHAR", "nullable": true, "is_primary": false},
+            {"name": "shipping_address", "field_type": "TEXT", "nullable": true, "is_primary": false},
+            {"name": "shipping_city", "field_type": "TEXT", "nullable": true, "is_primary": false},
+            {"name": "shipping_zip", "field_type": "TEXT", "nullable": true, "is_primary": false},
+            {"name": "payment_method", "field_type": "TEXT", "nullable": true, "is_primary": false},
+            {"name": "card_number", "field_type": "TEXT", "nullable": false, "is_primary": false},
+            {"name": "card_expiry", "field_type": "TEXT", "nullable": false, "is_primary": false},
+            {"name": "coupon_code", "field_type": "TEXT", "nullable": false, "is_primary": false}
+          ],
+          "source_url": "https://demo-shop.example.com/cart",
+          "source_title": "Shopping Cart - Demo Shop"
+        }
+      ],
+      "relationships": []
+    },
+    {
+      "title": "Login - Demo Shop",
+      "url": "https://demo-shop.example.com/login",
+      "entities": [
+        {
+          "name": "Login",
+          "fields": [
+            {"name": "email", "field_type": "VARCHAR", "nullable": true, "is_primary": false},
+            {"name": "password", "field_type": "TEXT", "nullable": true, "is_primary": false},
+            {"name": "remember_me", "field_type": "BOOLEAN", "nullable": false, "is_primary": false}
+          ],
+          "source_url": "https://demo-shop.example.com/login",
+          "source_title": "Login - Demo Shop"
+        },
+        {
+          "name": "Registration",
+          "fields": [
+            {"name": "reg_name", "field_type": "TEXT", "nullable": true, "is_primary": false},
+            {"name": "reg_email", "field_type": "VARCHAR", "nullable": true, "is_primary": false},
+            {"name": "reg_password", "field_type": "TEXT", "nullable": true, "is_primary": false},
+            {"name": "reg_password_confirm", "field_type": "TEXT", "nullable": true, "is_primary": false},
+            {"name": "reg_phone", "field_type": "TEXT", "nullable": false, "is_primary": false},
+            {"name": "agree_terms", "field_type": "BOOLEAN", "nullable": true, "is_primary": false}
+          ],
+          "source_url": "https://demo-shop.example.com/login",
+          "source_title": "Login - Demo Shop"
+        }
+      ],
+      "relationships": []
+    }
+  ],
+  "relationships": [
+    {"from_entity": "Category", "to_entity": "Product", "relationship_type": "one-to-many"},
+    {"from_entity": "Product", "to_entity": "Review", "relationship_type": "one-to-many"},
+    {"from_entity": "Product", "to_entity": "CartItem", "relationship_type": "one-to-many"},
+    {"from_entity": "CartItem", "to_entity": "Cart", "relationship_type": "many-to-one"},
+    {"from_entity": "Cart", "to_entity": "Checkout", "relationship_type": "one-to-one"}
+  ]
+}
